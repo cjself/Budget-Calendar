@@ -76,7 +76,7 @@
         .day-cell.other-month { opacity: 0.3; background: rgba(0,0,0,0.02); }
         .day-number { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
         .entries-container { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; max-height: 55px; overflow-y: auto; }
-        .entry-line { font-size: 0.7rem; padding: 2px 4px; border-radius: 2px; display: flex; justify-content: space-between; gap: 4px; }
+        .entry-line { font-size: 0.7rem; padding: 2px 4px; border-radius: 2px; display: flex; justify-content: space-between; gap: 4px; cursor: pointer; }
         .entry-line.income { background: rgba(22, 163, 74, 0.15); color: var(--success-color); }
         .entry-line.expense { background: rgba(220, 38, 38, 0.15); color: var(--danger-color); }
         .entry-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -658,87 +658,129 @@
             dayTxs.forEach(tx => {
                 if (tx.type === 'income') {
                     totalIn += tx.amount;
+                    runningBal += tx.amount;
                 } else {
                     totalOut += tx.amount;
+                    runningBal -= tx.amount;
                     categoryTotals[tx.category] = (categoryTotals[tx.category] || 0) + tx.amount;
                 }
-                runningBal += (tx.type === 'income' ? tx.amount : -tx.amount);
 
                 const line = document.createElement('div');
                 line.className = `entry-line ${tx.type}`;
-                line.innerHTML = `<span class="entry-desc">${tx.desc}</span><span>$${tx.amount.toFixed(2)}</span>`;
+                line.title = `${tx.desc}: $${tx.amount.toFixed(2)}`;
+                line.onclick = () => editTransaction(tx.id);
+                line.innerHTML = `
+                    <span class="entry-desc">${tx.desc}</span>
+                    <span>$${tx.amount.toFixed(0)}</span>
+                `;
                 entries.appendChild(line);
             });
 
             cell.appendChild(entries);
-            cell.innerHTML += `<div class="day-balance ${runningBal >= 0 ? 'positive' : 'negative'}">$${runningBal.toFixed(2)}</div>`;
+
+            const balDiv = document.createElement('div');
+            balDiv.className = `day-balance ${runningBal >= 0 ? 'positive' : 'negative'}`;
+            balDiv.textContent = `$${runningBal.toFixed(2)}`;
+            cell.appendChild(balDiv);
+
             grid.appendChild(cell);
         }
 
-        // Display Totals Bar
+        // Fill remaining calendar row slots
+        const totalCells = firstDayIdx + daysInMonth;
+        const remainingCells = (7 - (totalCells % 7)) % 7;
+        for (let r = 0; r < remainingCells; r++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'day-cell other-month';
+            grid.appendChild(emptyCell);
+        }
+
+        // Update Stat Cards
         document.getElementById('dispStartBal').textContent = `$${cal.initialBalance.toFixed(2)}`;
         document.getElementById('dispCashIn').textContent = `+$${totalIn.toFixed(2)}`;
         document.getElementById('dispCashOut').textContent = `-$${totalOut.toFixed(2)}`;
         document.getElementById('dispEndBal').textContent = `$${runningBal.toFixed(2)}`;
 
-        // Render Transaction List Sidebar
-        const listEl = document.getElementById('transactionList');
-        listEl.innerHTML = '';
-        cal.transactions.forEach(t => {
-            const item = document.createElement('li');
-            item.className = 'bill-item';
-            item.innerHTML = `
-                <div class="bill-info">
-                    <span class="bill-title">${t.desc}</span>
-                    <span class="bill-sub">${t.date} • ${t.category}</span>
-                </div>
-                <div>
-                    <span style="font-weight: bold; color: ${t.type === 'income' ? 'var(--success-color)' : 'var(--danger-color)'}">
-                        ${t.type === 'income' ? '+' : '-'}$${t.amount.toFixed(2)}
-                    </span>
-                    <button class="btn-action" onclick="editTransaction('${t.id}')">✏️</button>
-                    <button class="btn-action" onclick="deleteTransaction('${t.id}')">🗑️</button>
-                </div>
-            `;
-            listEl.appendChild(item);
-        });
+        // Render Transaction Activity Log
+        renderTransactionList();
 
-        // Render Chart.js Pie Breakdown
-        renderPieChart(categoryTotals);
+        // Update Category Pie Chart
+        renderChart(categoryTotals);
     }
 
-    function renderPieChart(categoryTotals) {
+    function renderTransactionList() {
+        const cal = getActiveCalendar();
+        const list = document.getElementById('transactionList');
+        list.innerHTML = '';
+
+        if (cal.transactions.length === 0) {
+            list.innerHTML = '<li style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 10px;">No transactions logged</li>';
+            return;
+        }
+
+        const sorted = [...cal.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        sorted.forEach(tx => {
+            const li = document.createElement('li');
+            li.className = 'bill-item';
+            const sign = tx.type === 'income' ? '+' : '-';
+            const color = tx.type === 'income' ? 'var(--success-color)' : 'var(--danger-color)';
+
+            li.innerHTML = `
+                <div class="bill-info">
+                    <span class="bill-title">${tx.desc}</span>
+                    <span class="bill-sub">${tx.date} • ${tx.category}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: bold; font-size: 0.85rem; color: ${color};">${sign}$${tx.amount.toFixed(2)}</span>
+                    <button class="btn-action" onclick="editTransaction('${tx.id}')">✏️</button>
+                    <button class="btn-action" onclick="deleteTransaction('${tx.id}')">❌</button>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function renderChart(categoryTotals) {
         const ctx = document.getElementById('categoryPieChart').getContext('2d');
         const labels = Object.keys(categoryTotals);
         const data = Object.values(categoryTotals);
-        const bgColors = labels.map(l => categoryColors[l] || '#94a3b8');
+        const backgroundColors = labels.map(cat => categoryColors[cat] || '#94a3b8');
 
         if (pieChartInstance) {
             pieChartInstance.destroy();
         }
 
+        if (labels.length === 0) {
+            ctx.clearRect(0, 0, 300, 180);
+            return;
+        }
+
         pieChartInstance = new Chart(ctx, {
-            type: 'pie',
+            type: 'doughnut',
             data: {
-                labels: labels.length ? labels : ['No Expenses'],
+                labels: labels,
                 datasets: [{
-                    data: data.length ? data : [1],
-                    backgroundColor: bgColors.length ? bgColors : ['#e2e8f0']
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
+                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
                 }
             }
         });
     }
 
-    // Initial Startup Executions
-    document.getElementById('transDate').value = today.toISOString().split('T')[0];
-    render();
+    // --- INITIALIZATION ---
+    window.onload = () => {
+        resetForm();
+        render();
+    };
 </script>
 </body>
 </html>
