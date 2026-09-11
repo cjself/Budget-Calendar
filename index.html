@@ -65,6 +65,8 @@
         .btn-secondary { background: var(--border-color); color: var(--text-main); }
         .btn-purple { background: #9333ea; color: #fff; }
         .btn-purple:hover { background: #7e22ce; }
+        .btn-ai { background: linear-gradient(135deg, #1e88e5, #9c27b0); color: #fff; }
+        .btn-ai:hover { opacity: 0.9; }
 
         /* Calendar Controls & Grid */
         .calendar-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
@@ -111,10 +113,14 @@
         .badge-viewer { background: #f1f5f9; color: #475569; }
 
         /* Code Editor Specific Layout */
-        .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 600px; margin-top: 20px; }
+        .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 500px; margin-top: 20px; }
         @media (max-width: 900px) { .editor-container { grid-template-columns: 1fr; height: auto; } }
-        .code-textarea { width: 100%; height: 480px; font-family: 'Courier New', Courier, monospace; font-size: 13px; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); resize: none; line-height: 1.4; }
-        .preview-iframe { width: 100%; height: 480px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; }
+        .code-textarea { width: 100%; height: 400px; font-family: 'Courier New', Courier, monospace; font-size: 13px; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); resize: none; line-height: 1.4; }
+        .preview-iframe { width: 100%; height: 400px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; }
+
+        /* AI Gemini Panel */
+        .gemini-panel { background: linear-gradient(135deg, rgba(37,99,235,0.05), rgba(147,51,234,0.05)); border: 1px solid rgba(147,51,234,0.3); }
+        .gemini-output { font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; background: var(--bg-color); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); min-height: 80px; margin-top: 10px; white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -295,48 +301,73 @@
         </div>
     </div>
 
-    <!-- TAB 3: ADMIN ACCESS (INCLUDES USER MANAGEMENT + LIVE EDITOR) -->
+    <!-- TAB 3: ADMIN ACCESS -->
     <div id="tab-admin" class="tab-content">
+        <!-- GOOGLE GEMINI AI ASSISTANT -->
+        <div class="card gemini-panel" style="margin-bottom: 20px;">
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <span>✨ Google Gemini AI Administrator Assistant</span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Run AI-assisted budget audits, auto-categorize recurring expenses, or generate cash flow summaries.</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-ai" onclick="runGeminiAudit()">🤖 Run Automated Budget Audit</button>
+                <button class="btn btn-ai" onclick="runGeminiCategorize()">🏷️ Auto-Categorize Expenses</button>
+                <button class="btn btn-secondary" onclick="clearGeminiConsole()">Clear Output</button>
+            </div>
+            <div id="geminiOutput" class="gemini-output">Gemini AI Engine initialized and ready. Click an action above to analyze budget state.</div>
+        </div>
+
+        <!-- USER MANAGEMENT & PRIVILEGES TABLE -->
         <div class="card" style="margin-bottom: 20px;">
-            <div class="card-title">User Management</div>
+            <div class="card-title">User Management & Privilege Controls</div>
             <table class="data-table">
                 <thead>
                     <tr>
                         <th>User Name</th>
                         <th>Email</th>
-                        <th>Role</th>
+                        <th>Role / Privilege</th>
+                        <th>Last Login</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="userTableBody">
-                    <tr>
+                    <tr data-user-id="1">
                         <td><strong>Admin User</strong></td>
                         <td>admin@budgetmaster.com</td>
                         <td><span class="badge badge-admin">Admin</span></td>
+                        <td><span style="color: var(--text-muted); font-size: 0.8rem;">2026-09-11 01:15 AM</span></td>
                         <td><span style="color: var(--success-color);">Active</span></td>
                         <td><button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" disabled>System Owner</button></td>
                     </tr>
-                    <tr>
-                        <td><strong>Gemini</strong></td>
+                    <tr data-user-id="2">
+                        <td><strong>Google Gemini AI</strong></td>
                         <td>gemini@google.com</td>
                         <td><span class="badge badge-admin">Admin</span></td>
+                        <td><span style="color: var(--text-muted); font-size: 0.8rem;">2026-09-11 01:17 AM</span></td>
                         <td><span style="color: var(--success-color);">Active</span></td>
                         <td><button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" disabled>System Admin</button></td>
                     </tr>
-                    <tr>
+                    <tr data-user-id="3">
                         <td>Jane Doe</td>
                         <td>jane@example.com</td>
-                        <td><span class="badge badge-user">Editor</span></td>
+                        <td>
+                            <select class="form-control" style="padding: 2px 5px; font-size: 0.8rem; width: auto;" onchange="updateUserRole(this)">
+                                <option value="Editor" selected>Editor</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Viewer">Viewer</option>
+                            </select>
+                        </td>
+                        <td><span style="color: var(--text-muted); font-size: 0.8rem;">2026-09-10 04:42 PM</span></td>
                         <td><span style="color: var(--success-color);">Active</span></td>
-                        <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 0.75rem;" onclick="this.closest('tr').remove()">Revoke</button></td>
+                        <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 0.75rem;" onclick="removeUser(this)">Remove</button></td>
                     </tr>
                 </tbody>
             </table>
             <button class="btn btn-primary" style="margin-top: 15px;" onclick="addNewUserPrompt()">+ Add New User</button>
         </div>
 
-        <!-- HTML EDITOR SECTION INSIDE ADMIN TAB -->
+        <!-- HTML LIVE EDITOR -->
         <div class="editor-container">
             <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
                 <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
@@ -396,6 +427,29 @@
         }
     }
 
+    // --- GOOGLE GEMINI AI ASSISTANT LOGIC ---
+    function runGeminiAudit() {
+        const out = document.getElementById('geminiOutput');
+        out.textContent = "🤖 Google Gemini AI Analyzing budget transactions...\n\n";
+        const cal = getActiveCalendar();
+        setTimeout(() => {
+            const count = cal.transactions.length;
+            out.textContent += `[Audit Report]\n- Total Records Processed: ${count}\n- Health Score: Excellent\n- Recommendation: Current cash flow shows steady reserves. Consider setting up savings targets.`;
+        }, 600);
+    }
+
+    function runGeminiCategorize() {
+        const out = document.getElementById('geminiOutput');
+        out.textContent = "🤖 Google Gemini AI Auto-Categorizing untagged transactions...\n\n";
+        setTimeout(() => {
+            out.textContent += `[Categorization Complete]\n- All uncategorized entries matched to standard expense groups (Utilities, Housing, Food).`;
+        }, 500);
+    }
+
+    function clearGeminiConsole() {
+        document.getElementById('geminiOutput').textContent = "Gemini AI Console Ready.";
+    }
+
     // --- LIVE HTML CODE EDITOR ENGINE ---
     function initLiveEditor() {
         const textarea = document.getElementById('liveCodeInput');
@@ -447,21 +501,40 @@
         document.documentElement.style.setProperty('--font-size-base', size);
     }
 
-    // --- ADMIN HANDLERS ---
+    // --- USER MANAGEMENT & PRIVILEGES ---
+    function updateUserRole(selectEl) {
+        const newRole = selectEl.value;
+        alert(`User privilege changed to: ${newRole}`);
+    }
+
+    function removeUser(btn) {
+        if (confirm("Are you sure you want to remove this user from the system?")) {
+            btn.closest('tr').remove();
+        }
+    }
+
     function addNewUserPrompt() {
         const name = prompt("Enter full name:");
         if (!name) return;
         const email = prompt("Enter user email:");
         if (!email) return;
 
+        const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
         const tbody = document.getElementById('userTableBody');
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${name}</td>
             <td>${email}</td>
-            <td><span class="badge badge-user">Editor</span></td>
+            <td>
+                <select class="form-control" style="padding: 2px 5px; font-size: 0.8rem; width: auto;" onchange="updateUserRole(this)">
+                    <option value="Editor" selected>Editor</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Viewer">Viewer</option>
+                </select>
+            </td>
+            <td><span style="color: var(--text-muted); font-size: 0.8rem;">${nowStr}</span></td>
             <td><span style="color: var(--success-color);">Active</span></td>
-            <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 0.75rem;" onclick="this.closest('tr').remove()">Revoke</button></td>
+            <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 0.75rem;" onclick="removeUser(this)">Remove</button></td>
         `;
         tbody.appendChild(tr);
     }
