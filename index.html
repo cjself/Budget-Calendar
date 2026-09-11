@@ -1,1 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Budget Calendar</title>
+    <!-- Web App Manifest for mobile Home Screen installation -->
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkJ1ZGdldCBDYWxlbmRhciIsCiAgInNob3J0X25hbWUiOiAiQnVkZ2V0IiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxMDdjNDEiLAogICJ0aGVtZV9jb2xvciI6ICIjMTA3YzQxIgp9">
+    <style>
+        :root {
+            --excel-green: #107c41;
+            --excel-dark: #0b582e;
+            --excel-light: #e6f2ec;
+            --border-color: #d1d5db;
+            --cell-header-bg: #2b579a;
+            --danger-color: #dc2626;
+            --success-color: #16a34a;
+        }
 
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f3f4f6;
+            color: #1f2937;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        header {
+            background: var(--excel-green);
+            color: white;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .sync-status {
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f59e0b;
+        }
+
+        .status-dot.online { background: #22c55e; }
+
+        .controls-panel {
+            padding: 15px 25px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .form-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        input, select, button {
+            padding: 6px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        button.btn-primary {
+            background-color: var(--excel-green);
+            color: white;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button.btn-primary:hover {
+            background-color: var(--excel-dark);
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .calendar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .calendar-header-info {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            background-color: var(--excel-light);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #a7f3d0;
+        }
+
+        .info-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-box span.title {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #065f46;
+            text-transform: uppercase;
+        }
+
+        .info-box span.val {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            border-top: 1px solid var(--border-color);
+            border-left: 1px solid var(--border-color);
+        }
+
+        .day-header {
+            background-color: var(--cell-header-bg);
+            color: white;
+            text-align: center;
+            padding: 8px 4px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .day-cell {
+            min-height: 110px;
+            background: white;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .day-cell.other-month {
+            background-color: #f9fafb;
+            opacity: 0.5;
+        }
+
+        .day-number {
+            font-weight: bold;
+            font-size: 0.9rem;
+            padding: 4px 6px;
+            color: #374151;
+        }
+
+        .entries-container {
+            font-size: 0.75rem;
+            padding: 0 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            max-height: 60px;
+        }
+
+        .entry-line {
+            display: flex;
+            justify-content: space-between;
+            line-height: 1.2;
+        }
+
+        .entry-line.income { color: var(--success-color); font-weight: 600; }
+        .entry-line.expense { color: var(--danger-color); }
+
+        .day-balance {
+            background-color: #f1f5f9;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-top: 1px dashed #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+
+        .day-balance.negative { color: var(--danger-color); }
+        .day-balance.positive { color: #0f766e; }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel-box {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .panel-header {
+            background-color: var(--excel-green);
+            color: white;
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .bill-list {
+            list-style: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .bill-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.85rem;
+            align-items: center;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: var(--danger-color);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 0 4px;
+        }
+
+        .recurring-badge {
+            font-size: 0.65rem;
+            background: #e2e8f0;
+            color: #475569;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }
+
+        @media (max-width: 900px) {
+            body { padding: 10px; }
+            .main-layout { grid-template-columns: 1fr; }
+            .calendar-header-info { grid-template-columns: repeat(2, 1fr); }
+            .day-cell { min-height: 85px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Cloud Budget Calendar</h1>
+        <div class="sync-status">
+            <div id="statusDot" class="status-dot"></div>
+            <span id="statusText">Connecting...</span>
+        </div>
+    </header>
+
+    <div class="controls-panel">
+        <div class="form-group">
+            <label for="monthSelect">Month:</label>
+            <select id="monthSelect"></select>
+            <label for="yearSelect">Year:</label>
+            <select id="yearSelect"></select>
+        </div>
+        <div class="form-group">
+            <label for="initialBalanceInput">Base Initial Balance ($):</label>
+            <input type="number" id="initialBalanceInput" step="0.01" value="903.50" style="width: 100px;">
+            <span style="font-size:0.75rem; color:#6b7280; margin-left: 5px;">(Jan 2024 Base)</span>
+        </div>
+    </div>
+
+    <!-- Entry Add Form -->
+    <div class="controls-panel" style="background-color: #fff;">
+        <form id="transactionForm" style="display: flex; gap: 15px; flex-wrap: wrap; width: 100%; align-items: flex-end;">
+            <div class="form-group" style="flex-direction: column; align-items: flex-start;">
+                <label>Start Date</label>
+                <input type="date" id="transDate" required>
+            </div>
+            <div class="form-group" style="flex-direction: column; align-items: flex-start;">
+                <label>Description</label>
+                <input type="text" id="transDesc" placeholder="e.g. Fuel, Paycheck" required>
+            </div>
+            <div class="form-group" style="flex-direction: column; align-items: flex-start;">
+                <label>Type</label>
+                <select id="transType">
+                    <option value="expense">Expense (-)</option>
+                    <option value="income">Income (+)</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex-direction: column; align-items: flex-start;">
+                <label>Repeat</label>
+                <select id="transRecur">
+                    <option value="none">One-time</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Biweekly (Every 2 wks)</option>
+                    <option value="monthly">Monthly</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex-direction: column; align-items: flex-start;">
+                <label>Amount ($)</label>
+                <input type="number" id="transAmount" step="0.01" min="0.01" placeholder="0.00" required style="width: 100px;">
+            </div>
+            <button type="submit" class="btn-primary" style="height: 33px;">+ Save Transaction</button>
+        </form>
+    </div>
+
+    <div class="main-layout">
+        <!-- Calendar Main View -->
+        <div class="calendar-section">
+            <div class="calendar-header-info">
+                <div class="info-box">
+                    <span class="title">Start Balance</span>
+                    <span class="val" id="dispStartBal">$0.00</span>
+                </div>
+                <div class="info-box">
+                    <span class="title">End Balance</span>
+                    <span class="val" id="dispEndBal">$0.00</span>
+                </div>
+                <div class="info-box">
+                    <span class="title">Cash In</span>
+                    <span class="val" style="color: var(--success-color);" id="dispCashIn">$0.00</span>
+                </div>
+                <div class="info-box">
+                    <span class="title">Cash Out</span>
+                    <span class="val" style="color: var(--danger-color);" id="dispCashOut">$0.00</span>
+                </div>
+            </div>
+
+            <div class="calendar-grid" id="calendarGrid">
+                <div class="day-header">Sunday</div>
+                <div class="day-header">Monday</div>
+                <div class="day-header">Tuesday</div>
+                <div class="day-header">Wednesday</div>
+                <div class="day-header">Thursday</div>
+                <div class="day-header">Friday</div>
+                <div class="day-header">Saturday</div>
+            </div>
+        </div>
+
+        <!-- Sidebar Summary -->
+        <div class="sidebar">
+            <div class="panel-box">
+                <div class="panel-header">Cloud Synchronized Rules</div>
+                <ul class="bill-list" id="transactionList"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase Compat Libraries -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<script>
+    // -------------------------------------------------------------
+    // REPLACE THIS WITH YOUR FIREBASE CONFIGURATION FROM STEP 1
+    // -------------------------------------------------------------
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "buget-calendar.firebaseapp.com",
+  projectId: "buget-calendar",
+  storageBucket: "buget-calendar.appspot.com",
+  messagingSenderId: "...",
+  appId: "..."
+};
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Default Fallback Template Data
+    let appData = {
+        initialBalance: 903.50,
+        currentYear: 2026,
+        currentMonth: 9,
+        transactions: []
+    };
+
+    let currentUser = null;
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    // Cloud Authentication Listener
+    auth.signInAnonymously().catch(err => console.error("Auth error:", err));
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            currentUser = user;
+            document.getElementById('statusDot').classList.add('online');
+            document.getElementById('statusText').textContent = "Cloud Synced";
+            listenToCloudBudget();
+        }
+    });
+
+    // Real-Time Cloud Listener
+    function listenToCloudBudget() {
+        if (!currentUser) return;
+
+        // Uses a shared cloud document ID so all your signed-in devices view the same calendar
+        db.collection("budgets").doc("shared_user_budget").onSnapshot(doc => {
+            if (doc.exists) {
+                appData = doc.data();
+                document.getElementById('initialBalanceInput').value = appData.initialBalance;
+            } else {
+                saveToCloud(); // Save initial default state if empty
+            }
+            render();
+        }, err => console.error("Firestore sync error:", err));
+    }
+
+    function saveToCloud() {
+        if (!currentUser) return;
+        db.collection("budgets").doc("shared_user_budget").set(appData)
+            .catch(err => console.error("Error pushing data:", err));
+    }
+
+    function initSelects() {
+        const monthSelect = document.getElementById('monthSelect');
+        const yearSelect = document.getElementById('yearSelect');
+
+        monthSelect.innerHTML = '';
+        yearSelect.innerHTML = '';
+
+        monthNames.forEach((month, index) => {
+            const opt = document.createElement('option');
+            opt.value = index;
+            opt.textContent = month;
+            if (index === appData.currentMonth) opt.selected = true;
+            monthSelect.appendChild(opt);
+        });
+
+        for (let y = 2024; y <= 2030; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            if (y === appData.currentYear) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+
+        monthSelect.addEventListener('change', (e) => {
+            appData.currentMonth = parseInt(e.target.value);
+            saveToCloud();
+            render();
+        });
+
+        yearSelect.addEventListener('change', (e) => {
+            appData.currentYear = parseInt(e.target.value);
+            saveToCloud();
+            render();
+        });
+
+        document.getElementById('initialBalanceInput').addEventListener('input', (e) => {
+            appData.initialBalance = parseFloat(e.target.value) || 0;
+            saveToCloud();
+            render();
+        });
+
+        document.getElementById('transDate').value = new Date().toISOString().split('T')[0];
+    }
+
+    document.getElementById('transactionForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const date = document.getElementById('transDate').value;
+        const desc = document.getElementById('transDesc').value;
+        const type = document.getElementById('transType').value;
+        const recur = document.getElementById('transRecur').value;
+        let amount = parseFloat(document.getElementById('transAmount').value);
+
+        if (type === 'expense') amount = -Math.abs(amount);
+
+        if (!appData.transactions) appData.transactions = [];
+        appData.transactions.push({
+            id: Date.now(),
+            date,
+            desc,
+            amount,
+            type,
+            recur
+        });
+
+        document.getElementById('transDesc').value = '';
+        document.getElementById('transAmount').value = '';
+
+        saveToCloud();
+    });
+
+    function deleteTransaction(id) {
+        appData.transactions = appData.transactions.filter(t => t.id !== id);
+        saveToCloud();
+    }
+
+    function formatCurrency(num) {
+        return (num < 0 ? '-$' : '$') + Math.abs(num).toFixed(2);
+    }
+
+    function doesTransactionOccurOnDate(trans, targetDateObj) {
+        const startDateObj = new Date(trans.date + 'T00:00:00');
+        if (targetDateObj < startDateObj) return false;
+
+        if (trans.recur === 'none') {
+            return targetDateObj.getTime() === startDateObj.getTime();
+        }
+
+        const diffTime = targetDateObj - startDateObj;
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        if (trans.recur === 'weekly') {
+            return diffDays % 7 === 0;
+        } else if (trans.recur === 'biweekly') {
+            return diffDays % 14 === 0;
+        } else if (trans.recur === 'monthly') {
+            return targetDateObj.getDate() === startDateObj.getDate();
+        }
+        return false;
+    }
+
+    function calculateStartingBalanceForMonth(targetYear, targetMonth) {
+        let balance = appData.initialBalance || 0;
+        const startOfCurrentMonth = new Date(targetYear, targetMonth, 1);
+
+        for (let d = new Date(2024, 0, 1); d < startOfCurrentMonth; d.setDate(d.getDate() + 1)) {
+            if (appData.transactions) {
+                appData.transactions.forEach(t => {
+                    if (doesTransactionOccurOnDate(t, d)) {
+                        balance += t.amount;
+                    }
+                });
+            }
+        }
+        return balance;
+    }
+
+    function render() {
+        const year = appData.currentYear;
+        const month = appData.currentMonth;
+
+        const firstDayOfMonth = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const grid = document.getElementById('calendarGrid');
+        
+        const existingDays = grid.querySelectorAll('.day-cell');
+        existingDays.forEach(cell => cell.remove());
+
+        let monthStartBalance = calculateStartingBalanceForMonth(year, month);
+        let runningBalance = monthStartBalance;
+        let totalCashIn = 0;
+        let totalCashOut = 0;
+
+        for (let i = 0; i < firstDayOfMonth; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'day-cell other-month';
+            grid.appendChild(cell);
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const targetDateObj = new Date(year, month, day);
+            const dayEntries = (appData.transactions || []).filter(t => doesTransactionOccurOnDate(t, targetDateObj));
+
+            const cell = document.createElement('div');
+            cell.className = 'day-cell';
+
+            let entriesHTML = '';
+            dayEntries.forEach(t => {
+                if (t.amount >= 0) {
+                    totalCashIn += t.amount;
+                } else {
+                    totalCashOut += Math.abs(t.amount);
+                }
+                runningBalance += t.amount;
+
+                entriesHTML += `
+                    <div class="entry-line ${t.type}">
+                        <span>${t.desc}${t.recur !== 'none' ? ' ↻' : ''}</span>
+                        <span>${formatCurrency(t.amount)}</span>
+                    </div>
+                `;
+            });
+
+            cell.innerHTML = `
+                <div class="day-number">${day}</div>
+                <div class="entries-container">
+                    ${entriesHTML}
+                </div>
+                <div class="day-balance ${runningBalance < 0 ? 'negative' : 'positive'}">
+                    <span>BAL</span>
+                    <span>${formatCurrency(runningBalance)}</span>
+                </div>
+            `;
+
+            grid.appendChild(cell);
+        }
+
+        document.getElementById('dispStartBal').textContent = formatCurrency(monthStartBalance);
+        document.getElementById('dispEndBal').textContent = formatCurrency(runningBalance);
+        document.getElementById('dispCashIn').textContent = formatCurrency(totalCashIn);
+        document.getElementById('dispCashOut').textContent = formatCurrency(-totalCashOut);
+
+        const transList = document.getElementById('transactionList');
+        transList.innerHTML = '';
+
+        (appData.transactions || []).forEach(t => {
+            const li = document.createElement('li');
+            li.className = 'bill-item';
+            li.innerHTML = `
+                <div>
+                    <strong>${t.desc}</strong>
+                    ${t.recur !== 'none' ? `<span class="recurring-badge">${t.recur}</span>` : ''}
+                    <div style="font-size:0.75rem; color:#6b7280;">Start: ${t.date}</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-weight:bold; color:${t.amount < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">
+                        ${formatCurrency(t.amount)}
+                    </span>
+                    <button class="btn-delete" onclick="deleteTransaction(${t.id})">&times;</button>
+                </div>
+            `;
+            transList.appendChild(li);
+        });
+    }
+
+    initSelects();
+</script>
+
+</body>
+</html>
