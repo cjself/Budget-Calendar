@@ -41,6 +41,8 @@
         .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
         .tab-btn.admin-tab { color: #d97706; }
         .tab-btn.admin-tab.active { border-bottom-color: #d97706; }
+        .tab-btn.editor-tab { color: #9333ea; }
+        .tab-btn.editor-tab.active { border-bottom-color: #9333ea; }
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -63,13 +65,15 @@
         .btn-primary:hover { background: var(--primary-hover); }
         .btn-danger { background: var(--danger-color); color: #fff; }
         .btn-secondary { background: var(--border-color); color: var(--text-main); }
+        .btn-purple { background: #9333ea; color: #fff; }
+        .btn-purple:hover { background: #7e22ce; }
 
         /* Calendar Controls & Grid */
         .calendar-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border-color); border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; }
         .day-header { background: var(--card-bg); padding: 8px; text-align: center; font-weight: bold; color: var(--text-muted); font-size: 0.8rem; }
-        .day-cell { background: var(--card-bg); min-height: 90px; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
-        .day-cell.other-month { opacity: 0.4; }
+        .day-cell { background: var(--card-bg); min-height: 95px; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+        .day-cell.other-month { opacity: 0.3; background: rgba(0,0,0,0.02); }
         .day-number { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
         .entries-container { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; max-height: 55px; overflow-y: auto; }
         .entry-line { font-size: 0.7rem; padding: 2px 4px; border-radius: 2px; display: flex; justify-content: space-between; gap: 4px; }
@@ -87,12 +91,12 @@
         .stat-value { font-size: 1.1rem; font-weight: bold; }
 
         /* Sidebar Lists & Badges */
-        .bill-list { list-style: none; max-height: 350px; overflow-y: auto; }
-        .bill-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
-        .btn-action { background: none; border: none; cursor: pointer; padding: 2px 5px; font-size: 0.9rem; }
-        .category-tag { font-size: 0.65rem; padding: 1px 4px; border-radius: 3px; font-weight: bold; cursor: pointer; }
-        .category-tag.unnecessary { background: #fef08a; color: #854d0e; }
-        .recurring-badge { font-size: 0.65rem; background: #e0e7ff; color: #3730a3; padding: 1px 4px; border-radius: 3px; }
+        .bill-list { list-style: none; max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .bill-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); }
+        .bill-info { display: flex; flex-direction: column; gap: 2px; }
+        .bill-title { font-weight: 600; font-size: 0.85rem; }
+        .bill-sub { font-size: 0.75rem; color: var(--text-muted); }
+        .btn-action { background: none; border: none; cursor: pointer; padding: 2px 5px; font-size: 0.85rem; }
 
         /* Admin & Settings Layouts */
         .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
@@ -107,6 +111,12 @@
         .badge-admin { background: #fef3c7; color: #92400e; }
         .badge-user { background: #e0f2fe; color: #075985; }
         .badge-viewer { background: #f1f5f9; color: #475569; }
+
+        /* Code Editor Tab Specific Layout */
+        .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 680px; }
+        @media (max-width: 900px) { .editor-container { grid-template-columns: 1fr; height: auto; } }
+        .code-textarea { width: 100%; height: 550px; font-family: 'Courier New', Courier, monospace; font-size: 13px; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); resize: none; line-height: 1.4; }
+        .preview-iframe { width: 100%; height: 550px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; }
     </style>
 </head>
 <body>
@@ -121,9 +131,10 @@
 
     <!-- Navigation Tabs -->
     <div class="tabs-header" id="tabsHeader">
-        <button class="tab-btn active" onclick="switchTab('dashboard')">Calendar Dashboard</button>
-        <button class="tab-btn" onclick="switchTab('settings')">Settings & Themes</button>
-        <button class="tab-btn admin-tab" onclick="switchTab('admin')">Admin Access</button>
+        <button class="tab-btn active" onclick="switchTab('dashboard', event)">Calendar Dashboard</button>
+        <button class="tab-btn" onclick="switchTab('settings', event)">Settings & Themes</button>
+        <button class="tab-btn admin-tab" onclick="switchTab('admin', event)">Admin Access</button>
+        <button class="tab-btn editor-tab" onclick="switchTab('editor', event)">HTML Live Editor</button>
     </div>
 
     <!-- TAB 1: CALENDAR DASHBOARD -->
@@ -202,7 +213,7 @@
 
                 <div class="card-title">Initial Balance</div>
                 <div class="form-group">
-                    <input type="number" step="0.01" id="initialBalanceInput" class="form-control" value="0.00">
+                    <input type="number" step="0.01" id="initialBalanceInput" class="form-control" value="1000.00" onchange="updateInitialBalance(this.value)">
                 </div>
 
                 <div class="card-title" style="margin-top: 15px;">CSV Tools</div>
@@ -281,7 +292,7 @@
                 </div>
                 <div class="form-group">
                     <label>Export System Data</label>
-                    <button class="btn btn-secondary" style="width: 100%; margin-top: 5px;" onclick="alert('Exporting backup data...')">Download Backup (JSON)</button>
+                    <button class="btn btn-secondary" style="width: 100%; margin-top: 5px;" onclick="exportDataJSON()">Download Backup (JSON)</button>
                 </div>
             </div>
         </div>
@@ -316,50 +327,32 @@
                         <td><span style="color: var(--success-color);">Active</span></td>
                         <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 0.75rem;" onclick="this.closest('tr').remove()">Revoke</button></td>
                     </tr>
-                    <tr>
-                        <td>Guest Viewer</td>
-                        <td>guest@example.com</td>
-                        <td><span class="badge badge-viewer">Viewer</span></td>
-                        <td><span style="color: var(--text-muted);">Inactive</span></td>
-                        <td><button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="this.closest('tr').remove()">Remove</button></td>
-                    </tr>
                 </tbody>
             </table>
             <button class="btn btn-primary" style="margin-top: 15px;" onclick="addNewUserPrompt()">+ Add New User</button>
         </div>
+    </div>
 
-        <div class="card">
-            <div class="card-title">Admin Audit & Security Logs</div>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Action</th>
-                        <th>Initiator</th>
-                        <th>IP Address</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>2026-09-11 10:14:02</td>
-                        <td>Theme settings updated</td>
-                        <td>Admin User</td>
-                        <td>192.168.1.45</td>
-                    </tr>
-                    <tr>
-                        <td>2026-09-11 09:30:11</td>
-                        <td>CSV Import Completed (14 records)</td>
-                        <td>Admin User</td>
-                        <td>192.168.1.45</td>
-                    </tr>
-                    <tr>
-                        <td>2026-09-10 18:22:50</td>
-                        <td>User Login Success</td>
-                        <td>Admin User</td>
-                        <td>192.168.1.45</td>
-                    </tr>
-                </tbody>
-            </table>
+    <!-- TAB 4: LIVE HTML EDITOR -->
+    <div id="tab-editor" class="tab-content">
+        <div class="editor-container">
+            <!-- Left Panel: Live Code Input -->
+            <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Live Source HTML Code</span>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn btn-purple" onclick="applyCodeChanges()">Apply & Render Live</button>
+                        <button class="btn btn-secondary" onclick="resetEditorCode()">Reset Code</button>
+                    </div>
+                </div>
+                <textarea id="liveCodeInput" class="code-textarea" spellcheck="false" oninput="updateLivePreview()"></textarea>
+            </div>
+
+            <!-- Right Panel: Live Sandbox Preview -->
+            <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="card-title">Live Sandboxed Preview</div>
+                <iframe id="livePreviewFrame" class="preview-iframe"></iframe>
+            </div>
         </div>
     </div>
 </div>
@@ -389,15 +382,49 @@
     let pieChartInstance = null;
 
     // --- TAB NAVIGATION ---
-    function switchTab(tabId) {
+    function switchTab(tabId, evt) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
         document.getElementById(`tab-${tabId}`).classList.add('active');
-        event.currentTarget.classList.add('active');
+        if (evt) evt.currentTarget.classList.add('active');
 
         if (tabId === 'dashboard') {
             render();
+        } else if (tabId === 'editor') {
+            initLiveEditor();
+        }
+    }
+
+    // --- LIVE HTML CODE EDITOR ENGINE ---
+    function initLiveEditor() {
+        const textarea = document.getElementById('liveCodeInput');
+        if (!textarea.value) {
+            textarea.value = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+        }
+        updateLivePreview();
+    }
+
+    function updateLivePreview() {
+        const iframe = document.getElementById('livePreviewFrame');
+        const code = document.getElementById('liveCodeInput').value;
+        const frameDoc = iframe.contentDocument || iframe.contentWindow.document;
+        frameDoc.open();
+        frameDoc.write(code);
+        frameDoc.close();
+    }
+
+    function applyCodeChanges() {
+        const newCode = document.getElementById('liveCodeInput').value;
+        document.open();
+        document.write(newCode);
+        document.close();
+    }
+
+    function resetEditorCode() {
+        if (confirm("Reset editor back to initial source code? Any unsaved edits will be discarded.")) {
+            document.getElementById('liveCodeInput').value = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            updateLivePreview();
         }
     }
 
@@ -412,7 +439,6 @@
 
     function changePrimaryColor(colorHex) {
         document.documentElement.style.setProperty('--primary-color', colorHex);
-        // Simple darken algorithm for hover state
         document.documentElement.style.setProperty('--primary-hover', colorHex + 'dd');
         document.getElementById('primaryColorHex').textContent = colorHex;
     }
@@ -445,12 +471,12 @@
         return appData.calendars[appData.activeTabId];
     }
 
-    function formatDateMMDDYYYY(dateStr) {
-        const [y, m, d] = dateStr.split('-');
-        return `${m}/${d}/${y}`;
+    function updateInitialBalance(val) {
+        const cal = getActiveCalendar();
+        cal.initialBalance = parseFloat(val) || 0.0;
+        render();
     }
 
-    // --- RENDER IMPLEMENTATIONS CONTINUED FROM PREVIOUS CODE ---
     function initSelects() {
         const mSelect = document.getElementById('monthSelect');
         const ySelect = document.getElementById('yearSelect');
@@ -506,6 +532,29 @@
         render();
     };
 
+    function editTransaction(id) {
+        const cal = getActiveCalendar();
+        const tx = cal.transactions.find(t => t.id === id);
+        if (!tx) return;
+
+        document.getElementById('editingId').value = tx.id;
+        document.getElementById('transDate').value = tx.date;
+        document.getElementById('transDesc').value = tx.desc;
+        document.getElementById('transAmount').value = tx.amount;
+        document.getElementById('transType').value = tx.type;
+        document.getElementById('transCategory').value = tx.category;
+        document.getElementById('transRecur').value = tx.recur;
+
+        document.getElementById('submitBtn').textContent = 'Update';
+        document.getElementById('cancelBtn').style.display = 'inline-block';
+    }
+
+    function deleteTransaction(id) {
+        const cal = getActiveCalendar();
+        cal.transactions = cal.transactions.filter(t => t.id !== id);
+        render();
+    }
+
     function resetForm() {
         document.getElementById('editingId').value = '';
         document.getElementById('transDate').value = today.toISOString().split('T')[0];
@@ -515,21 +564,82 @@
         document.getElementById('cancelBtn').style.display = 'none';
     }
 
+    // --- CSV IMPORT LOGIC ---
+    function importBankCSV(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const lines = evt.target.result.split('\n');
+            const cal = getActiveCalendar();
+
+            lines.forEach((line, idx) => {
+                if (idx === 0 || !line.trim()) return; 
+                const parts = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+                if (parts.length >= 3) {
+                    const [dateStr, desc, amountStr, category] = parts;
+                    const amount = parseFloat(amountStr);
+                    if (!isNaN(amount)) {
+                        cal.transactions.push({
+                            id: "csv_" + Date.now() + "_" + idx,
+                            date: dateStr || today.toISOString().split('T')[0],
+                            desc: desc || "CSV Import Item",
+                            amount: Math.abs(amount),
+                            type: amount < 0 ? 'expense' : 'income',
+                            category: category && categoryColors[category] ? category : 'General',
+                            recur: 'none'
+                        });
+                    }
+                }
+            });
+            render();
+        };
+        reader.readAsText(file);
+    }
+
+    function clearCSVImports() {
+        const cal = getActiveCalendar();
+        cal.transactions = cal.transactions.filter(t => !t.id.startsWith('csv_'));
+        render();
+    }
+
+    function exportDataJSON() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `budget_backup_${Date.now()}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    // --- MAIN RENDER FUNCTION ---
     function render() {
         initSelects();
         const cal = getActiveCalendar();
-        document.getElementById('initialBalanceInput').value = cal.initialBalance;
 
-        // Render Calendar Cells & Totals
+        // Render Calendar Grid
         const grid = document.getElementById('calendarGrid');
         const headers = grid.querySelectorAll('.day-header');
         grid.innerHTML = '';
         headers.forEach(h => grid.appendChild(h));
 
+        const firstDayIdx = new Date(appData.currentYear, appData.currentMonth, 1).getDay();
         const daysInMonth = new Date(appData.currentYear, appData.currentMonth + 1, 0).getDate();
+
+        // Render Empty Lead Padding Days
+        for (let p = 0; p < firstDayIdx; p++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'day-cell other-month';
+            grid.appendChild(emptyCell);
+        }
+
         let runningBal = cal.initialBalance;
         let totalIn = 0, totalOut = 0;
+        const categoryTotals = {};
 
+        // Day by Day Grid Processing
         for (let d = 1; d <= daysInMonth; d++) {
             const cell = document.createElement('div');
             cell.className = 'day-cell';
@@ -540,17 +650,23 @@
 
             const dayTxs = cal.transactions.filter(t => {
                 const dateObj = new Date(t.date + 'T00:00:00');
-                return dateObj.getDate() === d && dateObj.getMonth() === appData.currentMonth;
+                return dateObj.getDate() === d && 
+                       dateObj.getMonth() === appData.currentMonth && 
+                       dateObj.getFullYear() === appData.currentYear;
             });
 
             dayTxs.forEach(tx => {
-                if (tx.type === 'income') totalIn += tx.amount;
-                else totalOut += tx.amount;
+                if (tx.type === 'income') {
+                    totalIn += tx.amount;
+                } else {
+                    totalOut += tx.amount;
+                    categoryTotals[tx.category] = (categoryTotals[tx.category] || 0) + tx.amount;
+                }
                 runningBal += (tx.type === 'income' ? tx.amount : -tx.amount);
 
                 const line = document.createElement('div');
                 line.className = `entry-line ${tx.type}`;
-                line.innerHTML = `<span class="entry-desc">${tx.desc}</span><span>$${tx.amount}</span>`;
+                line.innerHTML = `<span class="entry-desc">${tx.desc}</span><span>$${tx.amount.toFixed(2)}</span>`;
                 entries.appendChild(line);
             });
 
@@ -559,13 +675,68 @@
             grid.appendChild(cell);
         }
 
+        // Display Totals Bar
         document.getElementById('dispStartBal').textContent = `$${cal.initialBalance.toFixed(2)}`;
         document.getElementById('dispCashIn').textContent = `+$${totalIn.toFixed(2)}`;
         document.getElementById('dispCashOut').textContent = `-$${totalOut.toFixed(2)}`;
         document.getElementById('dispEndBal').textContent = `$${runningBal.toFixed(2)}`;
+
+        // Render Transaction List Sidebar
+        const listEl = document.getElementById('transactionList');
+        listEl.innerHTML = '';
+        cal.transactions.forEach(t => {
+            const item = document.createElement('li');
+            item.className = 'bill-item';
+            item.innerHTML = `
+                <div class="bill-info">
+                    <span class="bill-title">${t.desc}</span>
+                    <span class="bill-sub">${t.date} • ${t.category}</span>
+                </div>
+                <div>
+                    <span style="font-weight: bold; color: ${t.type === 'income' ? 'var(--success-color)' : 'var(--danger-color)'}">
+                        ${t.type === 'income' ? '+' : '-'}$${t.amount.toFixed(2)}
+                    </span>
+                    <button class="btn-action" onclick="editTransaction('${t.id}')">✏️</button>
+                    <button class="btn-action" onclick="deleteTransaction('${t.id}')">🗑️</button>
+                </div>
+            `;
+            listEl.appendChild(item);
+        });
+
+        // Render Chart.js Pie Breakdown
+        renderPieChart(categoryTotals);
     }
 
-    // Initial Load
+    function renderPieChart(categoryTotals) {
+        const ctx = document.getElementById('categoryPieChart').getContext('2d');
+        const labels = Object.keys(categoryTotals);
+        const data = Object.values(categoryTotals);
+        const bgColors = labels.map(l => categoryColors[l] || '#94a3b8');
+
+        if (pieChartInstance) {
+            pieChartInstance.destroy();
+        }
+
+        pieChartInstance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels.length ? labels : ['No Expenses'],
+                datasets: [{
+                    data: data.length ? data : [1],
+                    backgroundColor: bgColors.length ? bgColors : ['#e2e8f0']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // Initial Startup Executions
     document.getElementById('transDate').value = today.toISOString().split('T')[0];
     render();
 </script>
