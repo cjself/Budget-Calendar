@@ -336,6 +336,12 @@
             <input type="number" id="initialBalanceInput" step="0.01" value="0.00" style="width: 100px;">
             <span style="font-size:0.75rem; color:#6b7280; margin-left: 5px;">(Jan 2024 Base)</span>
         </div>
+        <div class="form-group" style="margin-left: auto;">
+            <label for="csvFileInput" class="btn-secondary" style="padding: 6px 12px; border-radius: 4px; cursor: pointer; display: inline-block;">
+                📥 Import Bank CSV
+            </label>
+            <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="importBankCSV(event)">
+        </div>
     </div>
 
     <!-- Entry Add / Edit Form -->
@@ -452,10 +458,8 @@
     let currentUser = null;
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-    // Enable local persistence so offline access works seamless per browser
     db.enablePersistence({ synchronizeTabs: true }).catch(err => console.log("Persistence note:", err.code));
 
-    // Sign in user anonymously (each browser gets its own unique persistent ID)
     auth.signInAnonymously().catch(err => console.error("Auth error:", err));
 
     auth.onAuthStateChanged(user => {
@@ -467,7 +471,6 @@
         }
     });
 
-    // Listen to user's private document based on their Firebase User ID (UID)
     function listenToCloudBudget() {
         if (!currentUser) return;
 
@@ -476,7 +479,7 @@
                 appData = doc.data();
                 document.getElementById('initialBalanceInput').value = appData.initialBalance || 0;
             } else {
-                saveToCloud(); // Initialize default clean budget state for new visitor
+                saveToCloud();
             }
             render();
         }, err => console.error("Firestore sync error:", err));
@@ -486,6 +489,80 @@
         if (!currentUser) return;
         db.collection("budgets").doc(currentUser.uid).set(appData)
             .catch(err => console.error("Error saving data:", err));
+    }
+
+    function importBankCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            if (lines.length < 2) {
+                alert("CSV file appears to be empty.");
+                return;
+            }
+
+            const header = lines[0].toLowerCase().split(',').map(h => h.replace(/["']/g, '').trim());
+            
+            // Locate target column indexes
+            const dateIdx = header.findIndex(h => h.includes('date'));
+            const descIdx = header.findIndex(h => h.includes('description') || h.includes('payee') || h.includes('name') || h.includes('memo'));
+            const amountIdx = header.findIndex(h => h === 'amount');
+            const debitIdx = header.findIndex(h => h.includes('debit'));
+            const creditIdx = header.findIndex(h => h.includes('credit'));
+
+            if (dateIdx === -1) {
+                alert("Could not identify a 'Date' column in your bank CSV.");
+                return;
+            }
+
+            if (!appData.transactions) appData.transactions = [];
+            let importedCount = 0;
+
+            for (let i = 1; i < lines.length; i++) {
+                // Parse CSV line handling commas inside quotes
+                const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
+                if (row.length <= dateIdx) continue;
+
+                const rawDate = row[dateIdx] ? row[dateIdx].replace(/["']/g, '').trim() : '';
+                const parsedDate = new Date(rawDate);
+                if (isNaN(parsedDate.getTime())) continue;
+
+                const formattedDate = parsedDate.toISOString().split('T')[0];
+                const desc = descIdx !== -1 && row[descIdx] ? row[descIdx].replace(/["']/g, '').trim() : 'Bank Import';
+
+                let rawAmount = 0;
+                if (amountIdx !== -1 && row[amountIdx]) {
+                    rawAmount = parseFloat(row[amountIdx].replace(/["'$]/g, '')) || 0;
+                } else {
+                    const debit = debitIdx !== -1 && row[debitIdx] ? parseFloat(row[debitIdx].replace(/["'$]/g, '')) || 0 : 0;
+                    const credit = creditIdx !== -1 && row[creditIdx] ? parseFloat(row[creditIdx].replace(/["'$]/g, '')) || 0 : 0;
+                    if (debit > 0) rawAmount = -Math.abs(debit);
+                    else if (credit > 0) rawAmount = Math.abs(credit);
+                }
+
+                if (rawAmount === 0) continue;
+
+                const type = rawAmount < 0 ? 'expense' : 'income';
+
+                appData.transactions.push({
+                    id: Date.now() + Math.floor(Math.random() * 1000) + i,
+                    date: formattedDate,
+                    desc: desc,
+                    amount: rawAmount,
+                    type: type,
+                    recur: 'none'
+                });
+                importedCount++;
+            }
+
+            saveToCloud();
+            alert(`Successfully imported ${importedCount} transactions!`);
+            event.target.value = ''; // Reset input
+        };
+        reader.readAsText(file);
     }
 
     function initSelects() {
