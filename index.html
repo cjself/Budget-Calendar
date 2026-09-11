@@ -72,6 +72,71 @@
 
         .status-dot.online { background: #22c55e; }
 
+        /* Tabs Bar Styles */
+        .tabs-bar {
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            padding: 8px 15px 0 15px;
+            gap: 6px;
+            border-bottom: 2px solid var(--excel-green);
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            background: #cbd5e1;
+            border: none;
+            padding: 8px 16px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .tab-button:hover {
+            background: #94a3b8;
+            color: white;
+        }
+
+        .tab-button.active {
+            background: var(--excel-green);
+            color: white;
+        }
+
+        .tab-close {
+            font-size: 0.8rem;
+            line-height: 1;
+            padding: 2px 4px;
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+
+        .tab-close:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .add-tab-btn {
+            background: white;
+            border: 1px solid #cbd5e1;
+            color: var(--excel-green);
+            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 4px;
+        }
+
+        .add-tab-btn:hover {
+            background: var(--excel-light);
+        }
+
         .controls-panel {
             padding: 15px 25px;
             background: #f8fafc;
@@ -324,6 +389,12 @@
         </div>
     </header>
 
+    <!-- Tabbed Navigation Bar -->
+    <div class="tabs-bar" id="tabsBar">
+        <div id="tabButtons" style="display: flex; gap: 6px;"></div>
+        <button class="add-tab-btn" onclick="addNewCalendarTab()">+ New Calendar Tab</button>
+    </div>
+
     <div class="controls-panel">
         <div class="form-group">
             <label for="monthSelect">Month:</label>
@@ -419,7 +490,7 @@
         <!-- Sidebar Summary -->
         <div class="sidebar">
             <div class="panel-box">
-                <div class="panel-header">Cloud Synchronized Rules</div>
+                <div class="panel-header" id="sidebarTitle">Cloud Synchronized Rules</div>
                 <ul class="bill-list" id="transactionList"></ul>
             </div>
         </div>
@@ -448,11 +519,19 @@
     const db = firebase.firestore();
 
     const today = new Date();
+    
+    // Structure updated to manage multiple calendar instances
     let appData = {
-        initialBalance: 0.00,
+        activeTabId: "default",
         currentYear: today.getFullYear(),
         currentMonth: today.getMonth(),
-        transactions: []
+        calendars: {
+            "default": {
+                name: "Personal",
+                initialBalance: 0.00,
+                transactions: []
+            }
+        }
     };
 
     let currentUser = null;
@@ -471,16 +550,44 @@
         }
     });
 
+    function getActiveCalendar() {
+        if (!appData.calendars) {
+            appData.calendars = { "default": { name: "Personal", initialBalance: 0.00, transactions: [] } };
+        }
+        if (!appData.activeTabId || !appData.calendars[appData.activeTabId]) {
+            appData.activeTabId = Object.keys(appData.calendars)[0] || "default";
+        }
+        return appData.calendars[appData.activeTabId];
+    }
+
     function listenToCloudBudget() {
         if (!currentUser) return;
 
         db.collection("budgets").doc(currentUser.uid).onSnapshot(doc => {
             if (doc.exists) {
-                appData = doc.data();
-                document.getElementById('initialBalanceInput').value = appData.initialBalance || 0;
+                const data = doc.data();
+                // Migration check if converting old flat format to tabbed structure
+                if (data.transactions && !data.calendars) {
+                    appData.calendars = {
+                        "default": {
+                            name: "Personal",
+                            initialBalance: data.initialBalance || 0,
+                            transactions: data.transactions || []
+                        }
+                    };
+                    appData.activeTabId = "default";
+                    appData.currentYear = data.currentYear || today.getFullYear();
+                    appData.currentMonth = data.currentMonth || today.getMonth();
+                } else {
+                    appData = data;
+                }
+                
+                const activeCal = getActiveCalendar();
+                document.getElementById('initialBalanceInput').value = activeCal.initialBalance || 0;
             } else {
                 saveToCloud();
             }
+            renderTabs();
             render();
         }, err => console.error("Firestore sync error:", err));
     }
@@ -491,9 +598,81 @@
             .catch(err => console.error("Error saving data:", err));
     }
 
+    function renderTabs() {
+        const container = document.getElementById('tabButtons');
+        container.innerHTML = '';
+
+        Object.keys(appData.calendars).forEach(id => {
+            const cal = appData.calendars[id];
+            const isActive = id === appData.activeTabId;
+
+            const btn = document.createElement('button');
+            btn.className = `tab-button ${isActive ? 'active' : ''}`;
+            btn.onclick = () => switchTab(id);
+
+            const label = document.createElement('span');
+            label.textContent = cal.name;
+            btn.appendChild(label);
+
+            if (Object.keys(appData.calendars).length > 1) {
+                const closeBtn = document.createElement('span');
+                closeBtn.className = 'tab-close';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteTab(id);
+                };
+                btn.appendChild(closeBtn);
+            }
+
+            container.appendChild(btn);
+        });
+    }
+
+    function switchTab(id) {
+        if (!appData.calendars[id]) return;
+        appData.activeTabId = id;
+        resetForm();
+        saveToCloud();
+        renderTabs();
+        render();
+    }
+
+    function addNewCalendarTab() {
+        const name = prompt("Enter a name for the new calendar tab:", "Side Business");
+        if (!name || !name.trim()) return;
+
+        const newId = 'cal_' + Date.now();
+        appData.calendars[newId] = {
+            name: name.trim(),
+            initialBalance: 0.00,
+            transactions: []
+        };
+        appData.activeTabId = newId;
+        saveToCloud();
+        renderTabs();
+        render();
+    }
+
+    function deleteTab(id) {
+        if (Object.keys(appData.calendars).length <= 1) return;
+        if (confirm(`Are you sure you want to delete "${appData.calendars[id].name}" and all of its transactions?`)) {
+            delete appData.calendars[id];
+            if (appData.activeTabId === id) {
+                appData.activeTabId = Object.keys(appData.calendars)[0];
+            }
+            resetForm();
+            saveToCloud();
+            renderTabs();
+            render();
+        }
+    }
+
     function importBankCSV(event) {
         const file = event.target.files[0];
         if (!file) return;
+
+        const activeCal = getActiveCalendar();
 
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -506,7 +685,6 @@
 
             const header = lines[0].toLowerCase().split(',').map(h => h.replace(/["']/g, '').trim());
             
-            // Locate target column indexes
             const dateIdx = header.findIndex(h => h.includes('date'));
             const descIdx = header.findIndex(h => h.includes('description') || h.includes('payee') || h.includes('name') || h.includes('memo'));
             const amountIdx = header.findIndex(h => h === 'amount');
@@ -518,11 +696,10 @@
                 return;
             }
 
-            if (!appData.transactions) appData.transactions = [];
+            if (!activeCal.transactions) activeCal.transactions = [];
             let importedCount = 0;
 
             for (let i = 1; i < lines.length; i++) {
-                // Parse CSV line handling commas inside quotes
                 const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
                 if (row.length <= dateIdx) continue;
 
@@ -547,7 +724,7 @@
 
                 const type = rawAmount < 0 ? 'expense' : 'income';
 
-                appData.transactions.push({
+                activeCal.transactions.push({
                     id: Date.now() + Math.floor(Math.random() * 1000) + i,
                     date: formattedDate,
                     desc: desc,
@@ -559,8 +736,8 @@
             }
 
             saveToCloud();
-            alert(`Successfully imported ${importedCount} transactions!`);
-            event.target.value = ''; // Reset input
+            alert(`Successfully imported ${importedCount} transactions into ${activeCal.name}!`);
+            event.target.value = '';
         };
         reader.readAsText(file);
     }
@@ -601,7 +778,8 @@
         });
 
         document.getElementById('initialBalanceInput').addEventListener('input', (e) => {
-            appData.initialBalance = parseFloat(e.target.value) || 0;
+            const activeCal = getActiveCalendar();
+            activeCal.initialBalance = parseFloat(e.target.value) || 0;
             saveToCloud();
             render();
         });
@@ -611,6 +789,7 @@
 
     document.getElementById('transactionForm').addEventListener('submit', (e) => {
         e.preventDefault();
+        const activeCal = getActiveCalendar();
         const editingId = document.getElementById('editingId').value;
         const date = document.getElementById('transDate').value;
         const desc = document.getElementById('transDesc').value;
@@ -619,12 +798,12 @@
         let amount = parseFloat(document.getElementById('transAmount').value);
 
         if (type === 'expense') amount = -Math.abs(amount);
-        if (!appData.transactions) appData.transactions = [];
+        if (!activeCal.transactions) activeCal.transactions = [];
 
         if (editingId) {
-            const index = appData.transactions.findIndex(t => t.id === parseInt(editingId));
+            const index = activeCal.transactions.findIndex(t => t.id === parseInt(editingId));
             if (index !== -1) {
-                appData.transactions[index] = {
+                activeCal.transactions[index] = {
                     id: parseInt(editingId),
                     date,
                     desc,
@@ -634,7 +813,7 @@
                 };
             }
         } else {
-            appData.transactions.push({
+            activeCal.transactions.push({
                 id: Date.now(),
                 date,
                 desc,
@@ -649,7 +828,8 @@
     });
 
     function editTransaction(id) {
-        const trans = (appData.transactions || []).find(t => t.id === id);
+        const activeCal = getActiveCalendar();
+        const trans = (activeCal.transactions || []).find(t => t.id === id);
         if (!trans) return;
 
         document.getElementById('editingId').value = trans.id;
@@ -681,7 +861,8 @@
     }
 
     function deleteTransaction(id) {
-        appData.transactions = appData.transactions.filter(t => t.id !== id);
+        const activeCal = getActiveCalendar();
+        activeCal.transactions = activeCal.transactions.filter(t => t.id !== id);
         if (document.getElementById('editingId').value == id) {
             resetForm();
         }
@@ -714,12 +895,13 @@
     }
 
     function calculateStartingBalanceForMonth(targetYear, targetMonth) {
-        let balance = appData.initialBalance || 0;
+        const activeCal = getActiveCalendar();
+        let balance = activeCal.initialBalance || 0;
         const startOfCurrentMonth = new Date(targetYear, targetMonth, 1);
 
         for (let d = new Date(2024, 0, 1); d < startOfCurrentMonth; d.setDate(d.getDate() + 1)) {
-            if (appData.transactions) {
-                appData.transactions.forEach(t => {
+            if (activeCal.transactions) {
+                activeCal.transactions.forEach(t => {
                     if (doesTransactionOccurOnDate(t, d)) {
                         balance += t.amount;
                     }
@@ -730,6 +912,10 @@
     }
 
     function render() {
+        const activeCal = getActiveCalendar();
+        document.getElementById('initialBalanceInput').value = activeCal.initialBalance || 0;
+        document.getElementById('sidebarTitle').textContent = `${activeCal.name} Rules`;
+
         const year = appData.currentYear;
         const month = appData.currentMonth;
 
@@ -754,7 +940,7 @@
 
         for (let day = 1; day <= daysInMonth; day++) {
             const targetDateObj = new Date(year, month, day);
-            const dayEntries = (appData.transactions || []).filter(t => doesTransactionOccurOnDate(t, targetDateObj));
+            const dayEntries = (activeCal.transactions || []).filter(t => doesTransactionOccurOnDate(t, targetDateObj));
 
             const cell = document.createElement('div');
             cell.className = 'day-cell';
@@ -798,7 +984,7 @@
         const transList = document.getElementById('transactionList');
         transList.innerHTML = '';
 
-        (appData.transactions || []).forEach(t => {
+        (activeCal.transactions || []).forEach(t => {
             const li = document.createElement('li');
             li.className = 'bill-item';
             li.innerHTML = `
