@@ -114,6 +114,18 @@
             background-color: var(--excel-dark);
         }
 
+        button.btn-secondary {
+            background-color: #64748b;
+            color: white;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button.btn-secondary:hover {
+            background-color: #475569;
+        }
+
         .main-layout {
             display: grid;
             grid-template-columns: 3fr 1fr;
@@ -263,14 +275,25 @@
             align-items: center;
         }
 
-        .btn-delete {
+        .btn-action {
             background: none;
             border: none;
-            color: var(--danger-color);
             cursor: pointer;
-            font-weight: bold;
-            font-size: 1rem;
-            padding: 0 4px;
+            font-size: 0.9rem;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .btn-action:hover {
+            background-color: #f1f5f9;
+        }
+
+        .btn-delete {
+            color: var(--danger-color);
+        }
+
+        .btn-edit {
+            color: #2563eb;
         }
 
         .recurring-badge {
@@ -315,9 +338,10 @@
         </div>
     </div>
 
-    <!-- Entry Add Form -->
+    <!-- Entry Add / Edit Form -->
     <div class="controls-panel" style="background-color: #fff;">
         <form id="transactionForm" style="display: flex; gap: 15px; flex-wrap: wrap; width: 100%; align-items: flex-end;">
+            <input type="hidden" id="editingId" value="">
             <div class="form-group" style="flex-direction: column; align-items: flex-start;">
                 <label>Start Date</label>
                 <input type="date" id="transDate" required>
@@ -346,7 +370,10 @@
                 <label>Amount ($)</label>
                 <input type="number" id="transAmount" step="0.01" min="0.01" placeholder="0.00" required style="width: 100px;">
             </div>
-            <button type="submit" class="btn-primary" style="height: 33px;">+ Save Transaction</button>
+            <div style="display: flex; gap: 8px;">
+                <button type="submit" id="submitBtn" class="btn-primary" style="height: 33px;">+ Save Transaction</button>
+                <button type="button" id="cancelBtn" class="btn-secondary" style="height: 33px; display: none;" onclick="resetForm()">Cancel</button>
+            </div>
         </form>
     </div>
 
@@ -399,18 +426,15 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
 <script>
-    // -------------------------------------------------------------
-    // REPLACE THIS WITH YOUR FIREBASE CONFIGURATION FROM STEP 1
-    // -------------------------------------------------------------
-const firebaseConfig = {
-  apiKey: "AIzaSyCEDm48--bqzvcVO41jF5wf2Zz7LiPLp4o",
-  authDomain: "buget-calendar.firebaseapp.com",
-  projectId: "buget-calendar",
-  storageBucket: "buget-calendar.firebasestorage.app",
-  messagingSenderId: "626997835688",
-  appId: "1:626997835688:web:b9baacf46aee9424de4f9d",
-  measurementId: "G-RLK5SKMNRC"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyCEDm48--bqzvcVO41jF5wf2Zz7LiPLp4o",
+      authDomain: "buget-calendar.firebaseapp.com",
+      projectId: "buget-calendar",
+      storageBucket: "buget-calendar.firebasestorage.app",
+      messagingSenderId: "626997835688",
+      appId: "1:626997835688:web:b9baacf46aee9424de4f9d",
+      measurementId: "G-RLK5SKMNRC"
+    };
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
@@ -444,7 +468,6 @@ const firebaseConfig = {
     function listenToCloudBudget() {
         if (!currentUser) return;
 
-        // Uses a shared cloud document ID so all your signed-in devices view the same calendar
         db.collection("budgets").doc("shared_user_budget").onSnapshot(doc => {
             if (doc.exists) {
                 appData = doc.data();
@@ -508,6 +531,7 @@ const firebaseConfig = {
 
     document.getElementById('transactionForm').addEventListener('submit', (e) => {
         e.preventDefault();
+        const editingId = document.getElementById('editingId').value;
         const date = document.getElementById('transDate').value;
         const desc = document.getElementById('transDesc').value;
         const type = document.getElementById('transType').value;
@@ -515,25 +539,74 @@ const firebaseConfig = {
         let amount = parseFloat(document.getElementById('transAmount').value);
 
         if (type === 'expense') amount = -Math.abs(amount);
-
         if (!appData.transactions) appData.transactions = [];
-        appData.transactions.push({
-            id: Date.now(),
-            date,
-            desc,
-            amount,
-            type,
-            recur
-        });
 
-        document.getElementById('transDesc').value = '';
-        document.getElementById('transAmount').value = '';
+        if (editingId) {
+            // Update Existing Transaction
+            const index = appData.transactions.findIndex(t => t.id === parseInt(editingId));
+            if (index !== -1) {
+                appData.transactions[index] = {
+                    id: parseInt(editingId),
+                    date,
+                    desc,
+                    amount,
+                    type,
+                    recur
+                };
+            }
+        } else {
+            // Add New Transaction
+            appData.transactions.push({
+                id: Date.now(),
+                date,
+                desc,
+                amount,
+                type,
+                recur
+            });
+        }
 
+        resetForm();
         saveToCloud();
     });
 
+    function editTransaction(id) {
+        const trans = (appData.transactions || []).find(t => t.id === id);
+        if (!trans) return;
+
+        document.getElementById('editingId').value = trans.id;
+        document.getElementById('transDate').value = trans.date;
+        document.getElementById('transDesc').value = trans.desc;
+        document.getElementById('transType').value = trans.type;
+        document.getElementById('transRecur').value = trans.recur;
+        document.getElementById('transAmount').value = Math.abs(trans.amount);
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.textContent = '✓ Update Transaction';
+        submitBtn.style.backgroundColor = '#16a34a';
+
+        document.getElementById('cancelBtn').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+        document.getElementById('editingId').value = '';
+        document.getElementById('transDesc').value = '';
+        document.getElementById('transAmount').value = '';
+        document.getElementById('transDate').value = new Date().toISOString().split('T')[0];
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.textContent = '+ Save Transaction';
+        submitBtn.style.backgroundColor = 'var(--excel-green)';
+        
+        document.getElementById('cancelBtn').style.display = 'none';
+    }
+
     function deleteTransaction(id) {
         appData.transactions = appData.transactions.filter(t => t.id !== id);
+        if (document.getElementById('editingId').value == id) {
+            resetForm();
+        }
         saveToCloud();
     }
 
@@ -656,11 +729,12 @@ const firebaseConfig = {
                     ${t.recur !== 'none' ? `<span class="recurring-badge">${t.recur}</span>` : ''}
                     <div style="font-size:0.75rem; color:#6b7280;">Start: ${t.date}</div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div style="display:flex; align-items:center; gap:6px;">
                     <span style="font-weight:bold; color:${t.amount < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">
                         ${formatCurrency(t.amount)}
                     </span>
-                    <button class="btn-delete" onclick="deleteTransaction(${t.id})">&times;</button>
+                    <button class="btn-action btn-edit" onclick="editTransaction(${t.id})" title="Edit">✏️</button>
+                    <button class="btn-action btn-delete" onclick="deleteTransaction(${t.id})" title="Delete">&times;</button>
                 </div>
             `;
             transList.appendChild(li);
