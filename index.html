@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cloud Budget Calendar</title>
     <!-- Web App Manifest for mobile Home Screen installation -->
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkJ1ZGdldCBDYWxlbmRhciIsCiAgInNob3J0X25hbWUiOiAiQnVkZ2V0IiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxMDdjNDEiLAogICJ0aGVtZV9jb2xvciI6ICIjMTA3YzQxIgp9">
@@ -21,7 +21,7 @@
 
         * {
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 0;
         }
@@ -29,7 +29,8 @@
         body {
             background-color: #f3f4f6;
             color: #1f2937;
-            padding: 20px;
+            padding: 15px;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .container {
@@ -44,27 +45,29 @@
         header {
             background: var(--excel-green);
             color: white;
-            padding: 15px 25px;
+            padding: 12px 18px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         header h1 {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 600;
         }
 
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
         }
 
         .sync-status {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             background: rgba(255, 255, 255, 0.2);
-            padding: 4px 10px;
+            padding: 4px 8px;
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -84,15 +87,11 @@
             background: rgba(255, 255, 255, 0.2);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.4);
-            padding: 4px 10px;
+            padding: 5px 10px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.8rem;
             font-weight: 600;
-        }
-
-        .btn-lock:hover {
-            background: rgba(255, 255, 255, 0.35);
         }
 
         /* Tabs Bar Styles */
@@ -100,36 +99,29 @@
             background: #e2e8f0;
             display: flex;
             align-items: center;
-            padding: 8px 15px 0 15px;
+            padding: 8px 12px 0 12px;
             gap: 6px;
             border-bottom: 2px solid var(--excel-green);
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .tab-button {
             background: #cbd5e1;
             border: none;
-            padding: 8px 14px;
+            padding: 8px 12px;
             border-top-left-radius: 6px;
             border-top-right-radius: 6px;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: #475569;
-            cursor: grab;
+            cursor: pointer;
             display: flex;
             align-items: center;
             gap: 6px;
+            white-space: nowrap;
             transition: background 0.2s;
             user-select: none;
-        }
-
-        .tab-button:active {
-            cursor: grabbing;
-        }
-
-        .tab-button:hover {
-            background: #94a3b8;
-            color: white;
         }
 
         .tab-button.active {
@@ -137,36 +129,18 @@
             color: white;
         }
 
-        .tab-button.dragging {
-            opacity: 0.4;
-        }
-
-        .tab-title {
-            cursor: pointer;
-        }
-
         .tab-rename-icon {
             font-size: 0.75rem;
-            opacity: 0.6;
-            cursor: pointer;
-        }
-
-        .tab-rename-icon:hover {
-            opacity: 1;
-        }
-
-        .tab-close {
-            font-size: 0.8rem;
-            line-height: 1;
-            padding: 2px 4px;
-            border-radius: 50%;
             opacity: 0.7;
             cursor: pointer;
         }
 
-        .tab-close:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.2);
+        .tab-close {
+            font-size: 0.85rem;
+            padding: 2px 5px;
+            border-radius: 50%;
+            opacity: 0.8;
+            cursor: pointer;
         }
 
         .add-tab-btn {
@@ -181,37 +155,34 @@
             white-space: nowrap;
         }
 
-        .add-tab-btn:hover {
-            background: var(--excel-light);
-        }
-
         .controls-panel {
-            padding: 15px 25px;
+            padding: 12px 18px;
             background: #f8fafc;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 12px;
             align-items: center;
         }
 
         .form-group {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            flex-wrap: wrap;
         }
 
         label {
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             font-weight: 600;
             color: #4b5563;
         }
 
         input, select, button {
-            padding: 6px 10px;
+            padding: 7px 10px;
             border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            font-size: 0.875rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
         }
 
         button.btn-primary {
@@ -220,11 +191,6 @@
             border: none;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        button.btn-primary:hover {
-            background-color: var(--excel-dark);
         }
 
         button.btn-secondary {
@@ -235,10 +201,6 @@
             cursor: pointer;
         }
 
-        button.btn-secondary:hover {
-            background-color: #475569;
-        }
-
         button.btn-danger {
             background-color: #ef4444;
             color: white;
@@ -247,29 +209,25 @@
             cursor: pointer;
         }
 
-        button.btn-danger:hover {
-            background-color: #dc2626;
-        }
-
         .main-layout {
             display: grid;
             grid-template-columns: 3fr 1.2fr;
-            gap: 20px;
-            padding: 20px;
+            gap: 18px;
+            padding: 18px;
         }
 
         .calendar-section {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
         }
 
         .calendar-header-info {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
+            gap: 10px;
             background-color: var(--excel-light);
-            padding: 12px;
+            padding: 10px;
             border-radius: 6px;
             border: 1px solid #a7f3d0;
         }
@@ -280,14 +238,14 @@
         }
 
         .info-box span.title {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: bold;
             color: #065f46;
             text-transform: uppercase;
         }
 
         .info-box span.val {
-            font-size: 1.2rem;
+            font-size: 1.05rem;
             font-weight: bold;
         }
 
@@ -302,15 +260,15 @@
             background-color: var(--cell-header-bg);
             color: white;
             text-align: center;
-            padding: 8px 4px;
+            padding: 6px 2px;
             font-weight: 600;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             border-right: 1px solid var(--border-color);
             border-bottom: 1px solid var(--border-color);
         }
 
         .day-cell {
-            min-height: 110px;
+            min-height: 100px;
             background: white;
             border-right: 1px solid var(--border-color);
             border-bottom: 1px solid var(--border-color);
@@ -323,24 +281,24 @@
 
         .day-cell.other-month {
             background-color: #f9fafb;
-            opacity: 0.5;
+            opacity: 0.4;
         }
 
         .day-number {
             font-weight: bold;
-            font-size: 0.9rem;
-            padding: 4px 6px;
+            font-size: 0.8rem;
+            padding: 3px 5px;
             color: #374151;
         }
 
         .entries-container {
-            font-size: 0.75rem;
-            padding: 0 4px;
+            font-size: 0.7rem;
+            padding: 0 3px;
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 2px;
             overflow-y: auto;
-            max-height: 65px;
+            max-height: 60px;
         }
 
         .entry-line {
@@ -348,7 +306,7 @@
             justify-content: space-between;
             align-items: center;
             line-height: 1.2;
-            gap: 4px;
+            gap: 3px;
             width: 100%;
         }
 
@@ -370,12 +328,19 @@
 
         .category-tag {
             font-size: 0.65rem;
-            padding: 2px 4px;
-            border-radius: 3px;
+            padding: 2px 5px;
+            border-radius: 4px;
             background: #e2e8f0;
             color: #475569;
             font-weight: 600;
             text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+
+        .category-tag:hover {
+            opacity: 0.8;
         }
 
         .category-tag.unnecessary {
@@ -386,8 +351,8 @@
 
         .day-balance {
             background-color: #f1f5f9;
-            font-size: 0.75rem;
-            padding: 2px 6px;
+            font-size: 0.7rem;
+            padding: 2px 4px;
             border-top: 1px dashed #cbd5e1;
             display: flex;
             justify-content: space-between;
@@ -415,13 +380,13 @@
             color: white;
             padding: 8px 12px;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
 
         .chart-container {
-            padding: 15px;
+            padding: 10px;
             position: relative;
-            height: 260px;
+            height: 240px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -429,25 +394,26 @@
 
         .bill-list {
             list-style: none;
-            max-height: 320px;
+            max-height: 300px;
             overflow-y: auto;
         }
 
         .bill-item {
             display: flex;
             justify-content: space-between;
-            padding: 8px 12px;
+            padding: 8px 10px;
             border-bottom: 1px solid #f1f5f9;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             align-items: center;
+            gap: 6px;
         }
 
         .btn-action {
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 0.9rem;
-            padding: 2px 4px;
+            font-size: 0.85rem;
+            padding: 3px 5px;
             border-radius: 3px;
         }
 
@@ -459,12 +425,11 @@
         .btn-edit { color: #2563eb; }
 
         .recurring-badge {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             background: #e2e8f0;
             color: #475569;
             padding: 1px 4px;
             border-radius: 3px;
-            margin-left: 4px;
         }
 
         .empty-state {
@@ -483,34 +448,35 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            padding: 15px;
         }
 
         .pin-modal {
             background: white;
-            padding: 30px;
+            padding: 25px;
             border-radius: 12px;
             width: 100%;
-            max-width: 360px;
+            max-width: 340px;
             text-align: center;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         }
 
         .pin-modal h2 {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
             margin-bottom: 8px;
             color: #1e293b;
         }
 
         .pin-modal p {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #64748b;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .pin-input {
             width: 100%;
-            font-size: 1.5rem;
-            letter-spacing: 12px;
+            font-size: 1.4rem;
+            letter-spacing: 10px;
             text-align: center;
             padding: 10px;
             margin-bottom: 15px;
@@ -525,11 +491,22 @@
             display: none;
         }
 
+        /* --- MOBILE SPECIFIC OPTIMIZATIONS --- */
         @media (max-width: 900px) {
-            body { padding: 10px; }
-            .main-layout { grid-template-columns: 1fr; }
-            .calendar-header-info { grid-template-columns: repeat(2, 1fr); }
-            .day-cell { min-height: 85px; }
+            body { padding: 6px; }
+            header { flex-direction: column; align-items: flex-start; }
+            .header-actions { width: 100%; justify-content: space-between; }
+            .main-layout { grid-template-columns: 1fr; padding: 10px; gap: 12px; }
+            .controls-panel { padding: 10px; gap: 8px; }
+            .calendar-header-info { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+            .day-cell { min-height: 75px; }
+            .day-header { font-size: 0.65rem; padding: 4px 1px; }
+            .entry-desc { font-size: 0.65rem; }
+            .entry-amount { font-size: 0.65rem; }
+            .day-number { font-size: 0.75rem; padding: 1px 3px; }
+            .day-balance { font-size: 0.65rem; padding: 1px 2px; }
+            form#transactionForm input, form#transactionForm select { width: 100% !important; }
+            .chart-container { height: 210px; }
         }
     </style>
 </head>
@@ -563,33 +540,35 @@
     <!-- Tabbed Navigation Bar -->
     <div class="tabs-bar" id="tabsBar">
         <div id="tabButtons" style="display: flex; gap: 6px;"></div>
-        <button class="add-tab-btn" onclick="addNewCalendarTab()">+ New Calendar Tab</button>
+        <button class="add-tab-btn" onclick="addNewCalendarTab()">+ New Tab</button>
     </div>
 
     <div class="controls-panel">
-        <div class="form-group">
-            <label for="monthSelect">Month:</label>
-            <select id="monthSelect"></select>
-            <label for="yearSelect">Year:</label>
-            <select id="yearSelect"></select>
+        <div class="form-group" style="width: 100%; justify-content: space-between;">
+            <div style="display:flex; gap: 6px; align-items:center;">
+                <label for="monthSelect">Month:</label>
+                <select id="monthSelect"></select>
+                <label for="yearSelect">Year:</label>
+                <select id="yearSelect"></select>
+            </div>
+            <div style="display:flex; gap: 6px; align-items:center;">
+                <label for="csvFileInput" class="btn-secondary" style="padding: 6px 10px; border-radius: 6px; cursor: pointer;">
+                    📥 CSV
+                </label>
+                <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="importBankCSV(event)">
+                <button type="button" class="btn-danger" onclick="clearCSVImports()" title="Clear CSV">🗑️ Clear CSV</button>
+            </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="width: 100%; justify-content: flex-start;">
             <label for="initialBalanceInput">Base Initial Balance ($):</label>
-            <input type="number" id="initialBalanceInput" step="0.01" value="0.00" style="width: 100px;">
-            <span style="font-size:0.75rem; color:#6b7280; margin-left: 2px;">(Jan 2024 Base)</span>
-        </div>
-        <div class="form-group" style="margin-left: auto; gap: 8px;">
-            <label for="csvFileInput" class="btn-secondary" style="padding: 6px 12px; border-radius: 4px; cursor: pointer; display: inline-block;">
-                📥 Import CSV
-            </label>
-            <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="importBankCSV(event)">
-            <button type="button" class="btn-danger" onclick="clearCSVImports()" title="Remove imported non-recurring transactions">🗑️ Clear Imported CSV</button>
+            <input type="number" id="initialBalanceInput" step="0.01" value="0.00" style="width: 110px;">
+            <span style="font-size:0.7rem; color:#6b7280;">(Jan 2024 Base)</span>
         </div>
     </div>
 
     <!-- Entry Add / Edit Form -->
     <div class="controls-panel" style="background-color: #fff;">
-        <form id="transactionForm" style="display: flex; gap: 12px; flex-wrap: wrap; width: 100%; align-items: flex-end;">
+        <form id="transactionForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; width: 100%; align-items: flex-end;">
             <input type="hidden" id="editingId" value="">
             <div class="form-group" style="flex-direction: column; align-items: flex-start;">
                 <label>Start Date</label>
@@ -597,7 +576,7 @@
             </div>
             <div class="form-group" style="flex-direction: column; align-items: flex-start;">
                 <label>Description</label>
-                <input type="text" id="transDesc" placeholder="e.g. Electric Bill, Grocery" required style="width: 160px;">
+                <input type="text" id="transDesc" placeholder="e.g. Electric, Grocery" required>
             </div>
             <div class="form-group" style="flex-direction: column; align-items: flex-start;">
                 <label>Category</label>
@@ -631,11 +610,11 @@
             </div>
             <div class="form-group" style="flex-direction: column; align-items: flex-start;">
                 <label>Amount ($)</label>
-                <input type="number" id="transAmount" step="0.01" min="0.01" placeholder="0.00" required style="width: 90px;">
+                <input type="number" id="transAmount" step="0.01" min="0.01" placeholder="0.00" required>
             </div>
-            <div style="display: flex; gap: 8px;">
-                <button type="submit" id="submitBtn" class="btn-primary" style="height: 33px;">+ Save Transaction</button>
-                <button type="button" id="cancelBtn" class="btn-secondary" style="height: 33px; display: none;" onclick="resetForm()">Cancel</button>
+            <div style="display: flex; gap: 6px; grid-column: 1 / -1; margin-top: 4px;">
+                <button type="submit" id="submitBtn" class="btn-primary" style="flex:1; height: 36px;">+ Save Transaction</button>
+                <button type="button" id="cancelBtn" class="btn-secondary" style="height: 36px; display: none;" onclick="resetForm()">Cancel</button>
             </div>
         </form>
     </div>
@@ -663,19 +642,19 @@
             </div>
 
             <div class="calendar-grid" id="calendarGrid">
-                <div class="day-header">Sunday</div>
-                <div class="day-header">Monday</div>
-                <div class="day-header">Tuesday</div>
-                <div class="day-header">Wednesday</div>
-                <div class="day-header">Thursday</div>
-                <div class="day-header">Friday</div>
-                <div class="day-header">Saturday</div>
+                <div class="day-header">Sun</div>
+                <div class="day-header">Mon</div>
+                <div class="day-header">Tue</div>
+                <div class="day-header">Wed</div>
+                <div class="day-header">Thu</div>
+                <div class="day-header">Fri</div>
+                <div class="day-header">Sat</div>
             </div>
         </div>
 
         <!-- Sidebar Summary -->
         <div class="sidebar">
-            <!-- Pie Chart Section -->
+            <!-- Category Breakdown Pie Chart Panel -->
             <div class="panel-box">
                 <div class="panel-header" id="pieChartTitle">Monthly Category Breakdown</div>
                 <div class="chart-container">
@@ -683,7 +662,7 @@
                 </div>
             </div>
 
-            <!-- Current Month Transactions Panel -->
+            <!-- Current Month Active Transactions Panel -->
             <div class="panel-box">
                 <div class="panel-header" id="sidebarTitle">Current Month Transactions</div>
                 <ul class="bill-list" id="transactionList"></ul>
@@ -736,6 +715,7 @@
     let inactivityTimer = null;
     const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const categoryOptions = ["General", "Housing", "Utilities", "Food", "Transportation", "Income", "Subscriptions", "Unnecessary", "Debt"];
 
     const categoryColors = {
         'Housing': '#3b82f6',
@@ -761,6 +741,16 @@
             listenToCloudBudget();
         }
     });
+
+    // --- HELPER DATE FORMATTER: MM/DD/YYYY ---
+    function formatDateMMDDYYYY(dateStr) {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            return `${parts[1]}/${parts[2]}/${parts[0]}`;
+        }
+        return dateStr;
+    }
 
     // --- INACTIVITY & PIN LOCK MANAGEMENT ---
     function resetInactivityTimer() {
@@ -893,7 +883,7 @@
             .catch(err => console.error("Error saving data:", err));
     }
 
-    // --- TAB RENDERING & DRAG-AND-DROP ---
+    // --- TAB RENDERING ---
     function renderTabs() {
         const container = document.getElementById('tabButtons');
         container.innerHTML = '';
@@ -906,46 +896,12 @@
 
             const btn = document.createElement('button');
             btn.className = `tab-button ${isActive ? 'active' : ''}`;
-            btn.draggable = true;
             btn.dataset.tabId = id;
-
             btn.onclick = () => switchTab(id);
-
-            btn.ondragstart = (e) => {
-                draggedTabId = id;
-                btn.classList.add('dragging');
-                e.dataTransfer.effectAllowed = 'move';
-            };
-
-            btn.ondragend = () => {
-                btn.classList.remove('dragging');
-                draggedTabId = null;
-            };
-
-            btn.ondragover = (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-            };
-
-            btn.ondrop = (e) => {
-                e.preventDefault();
-                if (!draggedTabId || draggedTabId === id) return;
-
-                const fromIndex = appData.tabOrder.indexOf(draggedTabId);
-                const toIndex = appData.tabOrder.indexOf(id);
-
-                if (fromIndex !== -1 && toIndex !== -1) {
-                    appData.tabOrder.splice(fromIndex, 1);
-                    appData.tabOrder.splice(toIndex, 0, draggedTabId);
-                    saveToCloud();
-                    renderTabs();
-                }
-            };
 
             const label = document.createElement('span');
             label.className = 'tab-title';
             label.textContent = cal.name;
-            label.title = "Double-click to rename";
             label.ondblclick = (e) => {
                 e.stopPropagation();
                 renameCalendarTab(id);
@@ -955,7 +911,6 @@
             const renameIcon = document.createElement('span');
             renameIcon.className = 'tab-rename-icon';
             renameIcon.innerHTML = '✏️';
-            renameIcon.title = "Rename tab";
             renameIcon.onclick = (e) => {
                 e.stopPropagation();
                 renameCalendarTab(id);
@@ -966,7 +921,6 @@
                 const closeBtn = document.createElement('span');
                 closeBtn.className = 'tab-close';
                 closeBtn.innerHTML = '&times;';
-                closeBtn.title = "Delete tab";
                 closeBtn.onclick = (e) => {
                     e.stopPropagation();
                     deleteTab(id);
@@ -991,7 +945,7 @@
         const cal = appData.calendars[id];
         if (!cal) return;
 
-        const newName = prompt("Enter a new name for this calendar tab:", cal.name);
+        const newName = prompt("Enter new calendar name:", cal.name);
         if (newName && newName.trim() && newName.trim() !== cal.name) {
             cal.name = newName.trim();
             saveToCloud();
@@ -1001,7 +955,7 @@
     }
 
     function addNewCalendarTab() {
-        const name = prompt("Enter a name for the new calendar tab:", "Side Business");
+        const name = prompt("Enter name for new calendar tab:", "Side Business");
         if (!name || !name.trim()) return;
 
         const newId = 'cal_' + Date.now();
@@ -1019,7 +973,7 @@
 
     function deleteTab(id) {
         if (Object.keys(appData.calendars).length <= 1) return;
-        if (confirm(`Are you sure you want to delete "${appData.calendars[id].name}" and all of its transactions?`)) {
+        if (confirm(`Delete "${appData.calendars[id].name}" tab?`)) {
             delete appData.calendars[id];
             appData.tabOrder = appData.tabOrder.filter(tId => tId !== id);
             if (appData.activeTabId === id) {
@@ -1049,7 +1003,6 @@
             }
 
             const header = lines[0].toLowerCase().split(',').map(h => h.replace(/["']/g, '').trim());
-            
             const dateIdx = header.findIndex(h => h.includes('date'));
             const descIdx = header.findIndex(h => h.includes('description') || h.includes('payee') || h.includes('name') || h.includes('memo'));
             const amountIdx = header.findIndex(h => h === 'amount');
@@ -1103,7 +1056,7 @@
             }
 
             saveToCloud();
-            alert(`Successfully imported ${importedCount} transactions into ${activeCal.name}!`);
+            alert(`Imported ${importedCount} transactions into ${activeCal.name}!`);
             event.target.value = '';
         };
         reader.readAsText(file);
@@ -1116,8 +1069,7 @@
             return;
         }
 
-        const choice = confirm(`Click OK to clear all imported CSV (one-time) transactions from "${activeCal.name}".\n\n(Recurring bills/income will NOT be deleted).`);
-        if (choice) {
+        if (confirm(`Clear all imported one-time CSV transactions from "${activeCal.name}"?`)) {
             activeCal.transactions = activeCal.transactions.filter(t => t.recur !== 'none' || !t.imported);
             saveToCloud();
             render();
@@ -1211,6 +1163,22 @@
         resetForm();
         saveToCloud();
     });
+
+    // --- QUICK INLINE CATEGORY EDITING ---
+    function editCategoryInline(transId) {
+        const activeCal = getActiveCalendar();
+        const trans = (activeCal.transactions || []).find(t => t.id === transId);
+        if (!trans) return;
+
+        const currentCat = trans.category || 'General';
+        const newCat = prompt(`Change category for "${trans.desc}":\nChoices: ${categoryOptions.join(', ')}`, currentCat);
+
+        if (newCat && categoryOptions.includes(newCat) && newCat !== currentCat) {
+            trans.category = newCat;
+            saveToCloud();
+            render();
+        }
+    }
 
     function editTransaction(id) {
         const activeCal = getActiveCalendar();
@@ -1339,7 +1307,7 @@
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { boxWidth: 12, font: { size: 11 } }
+                        labels: { boxWidth: 10, font: { size: 10 } }
                     },
                     tooltip: {
                         callbacks: {
@@ -1402,7 +1370,6 @@
                 }
                 runningBalance += t.amount;
 
-                // Sum category totals for monthly expenses and income
                 const cat = t.category || 'General';
                 const absAmount = Math.abs(t.amount);
                 monthCategoryTotals[cat] = (monthCategoryTotals[cat] || 0) + absAmount;
@@ -1410,7 +1377,7 @@
                 const fullLabel = `${t.desc}${t.recur !== 'none' ? ' ↻' : ''}`;
 
                 entriesHTML += `
-                    <div class="entry-line ${t.type}" title="${t.desc} (${cat}): ${formatCurrency(t.amount)}">
+                    <div class="entry-line ${t.type}" title="${t.desc} (${cat}) - Start Date: ${formatDateMMDDYYYY(t.date)}: ${formatCurrency(t.amount)}">
                         <span class="entry-desc">${fullLabel}</span>
                         <span class="entry-amount">${formatCurrency(t.amount)}</span>
                     </div>
@@ -1436,10 +1403,8 @@
         document.getElementById('dispCashIn').textContent = formatCurrency(totalCashIn);
         document.getElementById('dispCashOut').textContent = formatCurrency(-totalCashOut);
 
-        // Update Monthly Pie Chart
         updatePieChart(monthCategoryTotals);
 
-        // Populate Sidebar list with ONLY transactions that occur in the currently selected month
         const transList = document.getElementById('transactionList');
         transList.innerHTML = '';
 
@@ -1453,22 +1418,23 @@
                 li.className = 'bill-item';
                 const cat = t.category || 'General';
                 const isUnnecessary = cat === 'Unnecessary';
+                const formattedDate = formatDateMMDDYYYY(t.date);
 
                 li.innerHTML = `
                     <div style="overflow: hidden; text-overflow: ellipsis;">
                         <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
                             <strong>${t.desc}</strong>
-                            <span class="category-tag ${isUnnecessary ? 'unnecessary' : ''}">${cat}</span>
+                            <span class="category-tag ${isUnnecessary ? 'unnecessary' : ''}" onclick="editCategoryInline(${t.id})" title="Click to edit category">${cat} ✏️</span>
                             ${t.recur !== 'none' ? `<span class="recurring-badge">${t.recur}</span>` : ''}
                         </div>
-                        <div style="font-size:0.75rem; color:#6b7280;">Start: ${t.date}</div>
+                        <div style="font-size:0.75rem; color:#6b7280;">Start: ${formattedDate}</div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:6px; flex-shrink: 0;">
+                    <div style="display:flex; align-items:center; gap:4px; flex-shrink: 0;">
                         <span style="font-weight:bold; color:${t.amount < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">
                             ${formatCurrency(t.amount)}
                         </span>
-                        <button class="btn-action btn-edit" onclick="editTransaction(${t.id})" title="Edit">✏️</button>
-                        <button class="btn-action btn-delete" onclick="deleteTransaction(${t.id})" title="Delete">&times;</button>
+                        <button class="btn-action btn-edit" onclick="editTransaction(${t.id})" title="Edit Transaction">✏️</button>
+                        <button class="btn-action btn-delete" onclick="deleteTransaction(${t.id})" title="Delete Transaction">&times;</button>
                     </div>
                 `;
                 transList.appendChild(li);
