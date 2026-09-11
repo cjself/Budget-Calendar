@@ -41,8 +41,6 @@
         .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
         .tab-btn.admin-tab { color: #d97706; }
         .tab-btn.admin-tab.active { border-bottom-color: #d97706; }
-        .tab-btn.editor-tab { color: #9333ea; }
-        .tab-btn.editor-tab.active { border-bottom-color: #9333ea; }
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -112,11 +110,11 @@
         .badge-user { background: #e0f2fe; color: #075985; }
         .badge-viewer { background: #f1f5f9; color: #475569; }
 
-        /* Code Editor Tab Specific Layout */
-        .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 680px; }
+        /* Code Editor Specific Layout */
+        .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 600px; margin-top: 20px; }
         @media (max-width: 900px) { .editor-container { grid-template-columns: 1fr; height: auto; } }
-        .code-textarea { width: 100%; height: 550px; font-family: 'Courier New', Courier, monospace; font-size: 13px; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); resize: none; line-height: 1.4; }
-        .preview-iframe { width: 100%; height: 550px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; }
+        .code-textarea { width: 100%; height: 480px; font-family: 'Courier New', Courier, monospace; font-size: 13px; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); resize: none; line-height: 1.4; }
+        .preview-iframe { width: 100%; height: 480px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; }
     </style>
 </head>
 <body>
@@ -134,7 +132,6 @@
         <button class="tab-btn active" onclick="switchTab('dashboard', event)">Calendar Dashboard</button>
         <button class="tab-btn" onclick="switchTab('settings', event)">Settings & Themes</button>
         <button class="tab-btn admin-tab" onclick="switchTab('admin', event)">Admin Access</button>
-        <button class="tab-btn editor-tab" onclick="switchTab('editor', event)">HTML Live Editor</button>
     </div>
 
     <!-- TAB 1: CALENDAR DASHBOARD -->
@@ -298,7 +295,7 @@
         </div>
     </div>
 
-    <!-- TAB 3: ADMIN ACCESS -->
+    <!-- TAB 3: ADMIN ACCESS (INCLUDES USER MANAGEMENT + LIVE EDITOR) -->
     <div id="tab-admin" class="tab-content">
         <div class="card" style="margin-bottom: 20px;">
             <div class="card-title">User Management</div>
@@ -321,6 +318,13 @@
                         <td><button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" disabled>System Owner</button></td>
                     </tr>
                     <tr>
+                        <td><strong>Gemini</strong></td>
+                        <td>gemini@google.com</td>
+                        <td><span class="badge badge-admin">Admin</span></td>
+                        <td><span style="color: var(--success-color);">Active</span></td>
+                        <td><button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" disabled>System Admin</button></td>
+                    </tr>
+                    <tr>
                         <td>Jane Doe</td>
                         <td>jane@example.com</td>
                         <td><span class="badge badge-user">Editor</span></td>
@@ -331,12 +335,9 @@
             </table>
             <button class="btn btn-primary" style="margin-top: 15px;" onclick="addNewUserPrompt()">+ Add New User</button>
         </div>
-    </div>
 
-    <!-- TAB 4: LIVE HTML EDITOR -->
-    <div id="tab-editor" class="tab-content">
+        <!-- HTML EDITOR SECTION INSIDE ADMIN TAB -->
         <div class="editor-container">
-            <!-- Left Panel: Live Code Input -->
             <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
                 <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>Live Source HTML Code</span>
@@ -348,7 +349,6 @@
                 <textarea id="liveCodeInput" class="code-textarea" spellcheck="false" oninput="updateLivePreview()"></textarea>
             </div>
 
-            <!-- Right Panel: Live Sandbox Preview -->
             <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
                 <div class="card-title">Live Sandboxed Preview</div>
                 <iframe id="livePreviewFrame" class="preview-iframe"></iframe>
@@ -391,7 +391,7 @@
 
         if (tabId === 'dashboard') {
             render();
-        } else if (tabId === 'editor') {
+        } else if (tabId === 'admin') {
             initLiveEditor();
         }
     }
