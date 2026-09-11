@@ -6,6 +6,8 @@
     <title>Cloud Budget Calendar</title>
     <!-- Web App Manifest for mobile Home Screen installation -->
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkJ1ZGdldCBDYWxlbmRhciIsCiAgInNob3J0X25hbWUiOiAiQnVkZ2V0IiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxMDdjNDEiLAogICJ0aGVtZV9jb2xvciI6ICIjMTA3YzQxIgp9">
+    <!-- Chart.js for Pie Chart Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --excel-green: #107c41;
@@ -251,7 +253,7 @@
 
         .main-layout {
             display: grid;
-            grid-template-columns: 3fr 1fr;
+            grid-template-columns: 3fr 1.2fr;
             gap: 20px;
             padding: 20px;
         }
@@ -341,7 +343,6 @@
             max-height: 65px;
         }
 
-        /* Truncate long transaction text to fit box */
         .entry-line {
             display: flex;
             justify-content: space-between;
@@ -368,13 +369,19 @@
         .entry-line.expense { color: var(--danger-color); }
 
         .category-tag {
-            font-size: 0.6rem;
-            padding: 1px 3px;
+            font-size: 0.65rem;
+            padding: 2px 4px;
             border-radius: 3px;
             background: #e2e8f0;
             color: #475569;
             font-weight: 600;
             text-transform: uppercase;
+        }
+
+        .category-tag.unnecessary {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
         }
 
         .day-balance {
@@ -411,9 +418,18 @@
             font-size: 0.9rem;
         }
 
+        .chart-container {
+            padding: 15px;
+            position: relative;
+            height: 260px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         .bill-list {
             list-style: none;
-            max-height: 400px;
+            max-height: 320px;
             overflow-y: auto;
         }
 
@@ -449,6 +465,13 @@
             padding: 1px 4px;
             border-radius: 3px;
             margin-left: 4px;
+        }
+
+        .empty-state {
+            padding: 20px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
         }
 
         /* PIN Lock Modal Screen Overlay */
@@ -586,6 +609,7 @@
                     <option value="Transportation">Transportation</option>
                     <option value="Income">Income</option>
                     <option value="Subscriptions">Subscriptions</option>
+                    <option value="Unnecessary">Unnecessary</option>
                     <option value="Debt">Debt/Loans</option>
                 </select>
             </div>
@@ -651,8 +675,17 @@
 
         <!-- Sidebar Summary -->
         <div class="sidebar">
+            <!-- Pie Chart Section -->
             <div class="panel-box">
-                <div class="panel-header" id="sidebarTitle">Cloud Synchronized Rules</div>
+                <div class="panel-header" id="pieChartTitle">Monthly Category Breakdown</div>
+                <div class="chart-container">
+                    <canvas id="categoryPieChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Current Month Transactions Panel -->
+            <div class="panel-box">
+                <div class="panel-header" id="sidebarTitle">Current Month Transactions</div>
                 <ul class="bill-list" id="transactionList"></ul>
             </div>
         </div>
@@ -699,9 +732,22 @@
     let currentUser = null;
     let isUnlocked = false;
     let draggedTabId = null;
+    let pieChartInstance = null;
     let inactivityTimer = null;
-    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
+    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    const categoryColors = {
+        'Housing': '#3b82f6',
+        'Utilities': '#06b6d4',
+        'Food': '#10b981',
+        'Transportation': '#f59e0b',
+        'Income': '#22c55e',
+        'Subscriptions': '#8b5cf6',
+        'Unnecessary': '#ef4444',
+        'Debt': '#64748b',
+        'General': '#6b7280'
+    };
 
     db.enablePersistence({ synchronizeTabs: true }).catch(err => console.log("Persistence note:", err.code));
 
@@ -800,7 +846,6 @@
             if (doc.exists) {
                 const data = doc.data();
                 
-                // Format migration support
                 if (data.transactions && !data.calendars) {
                     appData.calendars = {
                         "default": {
@@ -818,7 +863,6 @@
                     appData = data;
                 }
 
-                // Maintain valid tab order array
                 if (!appData.tabOrder) {
                     appData.tabOrder = Object.keys(appData.calendars);
                 } else {
@@ -1236,6 +1280,17 @@
         return false;
     }
 
+    function doesTransactionOccurInMonth(trans, year, month) {
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+            const targetDateObj = new Date(year, month, day);
+            if (doesTransactionOccurOnDate(trans, targetDateObj)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function calculateStartingBalanceForMonth(targetYear, targetMonth) {
         const activeCal = getActiveCalendar();
         let balance = activeCal.initialBalance || 0;
@@ -1253,15 +1308,62 @@
         return balance;
     }
 
+    function updatePieChart(categoryTotals) {
+        const ctx = document.getElementById('categoryPieChart').getContext('2d');
+        const labels = Object.keys(categoryTotals);
+        const data = Object.values(categoryTotals);
+        const bgColors = labels.map(cat => categoryColors[cat] || '#94a3b8');
+
+        if (pieChartInstance) {
+            pieChartInstance.destroy();
+        }
+
+        if (labels.length === 0) {
+            ctx.clearRect(0, 0, 300, 300);
+            return;
+        }
+
+        pieChartInstance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: bgColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 12, font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.label}: $${context.raw.toFixed(2)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     function render() {
         if (!isUnlocked) return;
 
         const activeCal = getActiveCalendar();
         document.getElementById('initialBalanceInput').value = activeCal.initialBalance || 0;
-        document.getElementById('sidebarTitle').textContent = `${activeCal.name} Rules`;
-
+        
         const year = appData.currentYear;
         const month = appData.currentMonth;
+
+        document.getElementById('sidebarTitle').textContent = `${monthNames[month]} ${year} Transactions`;
+        document.getElementById('pieChartTitle').textContent = `${monthNames[month]} Category Breakdown`;
 
         const firstDayOfMonth = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1275,6 +1377,8 @@
         let runningBalance = monthStartBalance;
         let totalCashIn = 0;
         let totalCashOut = 0;
+        
+        const monthCategoryTotals = {};
 
         for (let i = 0; i < firstDayOfMonth; i++) {
             const cell = document.createElement('div');
@@ -1298,10 +1402,15 @@
                 }
                 runningBalance += t.amount;
 
+                // Sum category totals for monthly expenses and income
+                const cat = t.category || 'General';
+                const absAmount = Math.abs(t.amount);
+                monthCategoryTotals[cat] = (monthCategoryTotals[cat] || 0) + absAmount;
+
                 const fullLabel = `${t.desc}${t.recur !== 'none' ? ' ↻' : ''}`;
 
                 entriesHTML += `
-                    <div class="entry-line ${t.type}" title="${t.desc} (${t.category || 'General'}): ${formatCurrency(t.amount)}">
+                    <div class="entry-line ${t.type}" title="${t.desc} (${cat}): ${formatCurrency(t.amount)}">
                         <span class="entry-desc">${fullLabel}</span>
                         <span class="entry-amount">${formatCurrency(t.amount)}</span>
                     </div>
@@ -1327,31 +1436,44 @@
         document.getElementById('dispCashIn').textContent = formatCurrency(totalCashIn);
         document.getElementById('dispCashOut').textContent = formatCurrency(-totalCashOut);
 
+        // Update Monthly Pie Chart
+        updatePieChart(monthCategoryTotals);
+
+        // Populate Sidebar list with ONLY transactions that occur in the currently selected month
         const transList = document.getElementById('transactionList');
         transList.innerHTML = '';
 
-        (activeCal.transactions || []).forEach(t => {
-            const li = document.createElement('li');
-            li.className = 'bill-item';
-            li.innerHTML = `
-                <div style="overflow: hidden; text-overflow: ellipsis;">
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <strong>${t.desc}</strong>
-                        <span class="category-tag">${t.category || 'General'}</span>
-                        ${t.recur !== 'none' ? `<span class="recurring-badge">${t.recur}</span>` : ''}
+        const currentMonthTransactions = (activeCal.transactions || []).filter(t => doesTransactionOccurInMonth(t, year, month));
+
+        if (currentMonthTransactions.length === 0) {
+            transList.innerHTML = `<div class="empty-state">No transactions active in ${monthNames[month]} ${year}.</div>`;
+        } else {
+            currentMonthTransactions.forEach(t => {
+                const li = document.createElement('li');
+                li.className = 'bill-item';
+                const cat = t.category || 'General';
+                const isUnnecessary = cat === 'Unnecessary';
+
+                li.innerHTML = `
+                    <div style="overflow: hidden; text-overflow: ellipsis;">
+                        <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                            <strong>${t.desc}</strong>
+                            <span class="category-tag ${isUnnecessary ? 'unnecessary' : ''}">${cat}</span>
+                            ${t.recur !== 'none' ? `<span class="recurring-badge">${t.recur}</span>` : ''}
+                        </div>
+                        <div style="font-size:0.75rem; color:#6b7280;">Start: ${t.date}</div>
                     </div>
-                    <div style="font-size:0.75rem; color:#6b7280;">Start: ${t.date}</div>
-                </div>
-                <div style="display:flex; align-items:center; gap:6px; flex-shrink: 0;">
-                    <span style="font-weight:bold; color:${t.amount < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">
-                        ${formatCurrency(t.amount)}
-                    </span>
-                    <button class="btn-action btn-edit" onclick="editTransaction(${t.id})" title="Edit">✏️</button>
-                    <button class="btn-action btn-delete" onclick="deleteTransaction(${t.id})" title="Delete">&times;</button>
-                </div>
-            `;
-            transList.appendChild(li);
-        });
+                    <div style="display:flex; align-items:center; gap:6px; flex-shrink: 0;">
+                        <span style="font-weight:bold; color:${t.amount < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">
+                            ${formatCurrency(t.amount)}
+                        </span>
+                        <button class="btn-action btn-edit" onclick="editTransaction(${t.id})" title="Edit">✏️</button>
+                        <button class="btn-action btn-delete" onclick="deleteTransaction(${t.id})" title="Delete">&times;</button>
+                    </div>
+                `;
+                transList.appendChild(li);
+            });
+        }
     }
 
     initSelects();
