@@ -64,6 +64,14 @@
             gap: 10px;
         }
 
+        .user-email-tag {
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
         .sync-status {
             font-size: 0.75rem;
             background: rgba(255, 255, 255, 0.2);
@@ -83,7 +91,7 @@
 
         .status-dot.online { background: #22c55e; }
 
-        .btn-lock {
+        .btn-logout {
             background: rgba(255, 255, 255, 0.2);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.4);
@@ -439,8 +447,8 @@
             font-size: 0.85rem;
         }
 
-        /* PIN Lock Modal Screen Overlay */
-        .pin-overlay {
+        /* Login / Signup Modal Screen Overlay */
+        .auth-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(15, 23, 42, 0.95);
@@ -451,44 +459,52 @@
             padding: 15px;
         }
 
-        .pin-modal {
+        .auth-modal {
             background: white;
             padding: 25px;
             border-radius: 12px;
             width: 100%;
-            max-width: 340px;
+            max-width: 360px;
             text-align: center;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         }
 
-        .pin-modal h2 {
-            font-size: 1.2rem;
-            margin-bottom: 8px;
+        .auth-modal h2 {
+            font-size: 1.3rem;
+            margin-bottom: 6px;
             color: #1e293b;
         }
 
-        .pin-modal p {
+        .auth-modal p {
             font-size: 0.8rem;
             color: #64748b;
             margin-bottom: 18px;
         }
 
-        .pin-input {
+        .auth-input {
             width: 100%;
-            font-size: 1.4rem;
-            letter-spacing: 10px;
-            text-align: center;
+            font-size: 0.95rem;
             padding: 10px;
-            margin-bottom: 15px;
-            border: 2px solid #cbd5e1;
+            margin-bottom: 12px;
+            border: 1px solid #cbd5e1;
             border-radius: 6px;
         }
 
-        .pin-error {
+        .auth-error {
             color: var(--danger-color);
             font-size: 0.8rem;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             display: none;
+            text-align: left;
+        }
+
+        .auth-toggle {
+            font-size: 0.8rem;
+            color: var(--excel-green);
+            cursor: pointer;
+            margin-top: 12px;
+            display: inline-block;
+            text-decoration: underline;
         }
 
         /* --- MOBILE SPECIFIC OPTIMIZATIONS --- */
@@ -512,16 +528,18 @@
 </head>
 <body>
 
-<!-- PIN Security Lock Modal Overlay -->
-<div id="pinModal" class="pin-overlay" style="display: none;">
-    <div class="pin-modal">
-        <h2 id="pinTitle">🔒 Security PIN Lock</h2>
-        <p id="pinSubtext">Enter your 4-digit PIN to access your budget.</p>
-        <div id="pinError" class="pin-error">Incorrect PIN. Try again.</div>
-        <form onsubmit="handlePinSubmit(event)">
-            <input type="password" id="pinInput" class="pin-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" required autofocus>
-            <button type="submit" id="pinSubmitBtn" class="btn-primary" style="width: 100%; padding: 10px; font-size: 1rem;">Unlock Calendar</button>
+<!-- User Auth Screen Overlay -->
+<div id="authModal" class="auth-overlay">
+    <div class="auth-modal">
+        <h2 id="authTitle">Sign In to Your Budget</h2>
+        <p id="authSubtext">Sync your financial calendar across all devices.</p>
+        <div id="authError" class="auth-error"></div>
+        <form onsubmit="handleAuthSubmit(event)">
+            <input type="email" id="authEmail" class="auth-input" placeholder="Email Address" required autofocus>
+            <input type="password" id="authPassword" class="auth-input" placeholder="Password" required minlength="6">
+            <button type="submit" id="authSubmitBtn" class="btn-primary" style="width: 100%; padding: 10px; font-size: 1rem;">Sign In</button>
         </form>
+        <span id="authToggleBtn" class="auth-toggle" onclick="toggleAuthMode()">Need an account? Sign Up</span>
     </div>
 </div>
 
@@ -529,10 +547,11 @@
     <header>
         <h1>Cloud Budget Calendar</h1>
         <div class="header-actions">
-            <button class="btn-lock" onclick="lockApp()">🔒 Lock</button>
+            <span id="userEmailDisplay" class="user-email-tag" style="display: none;"></span>
+            <button class="btn-logout" id="logoutBtn" style="display: none;" onclick="signOutUser()">Sign Out</button>
             <div class="sync-status">
                 <div id="statusDot" class="status-dot"></div>
-                <span id="statusText">Connecting...</span>
+                <span id="statusText">Disconnected</span>
             </div>
         </div>
     </header>
@@ -694,7 +713,6 @@
     const today = new Date();
     
     let appData = {
-        pin: null,
         tabOrder: ["default"],
         activeTabId: "default",
         currentYear: today.getFullYear(),
@@ -709,11 +727,8 @@
     };
 
     let currentUser = null;
-    let isUnlocked = false;
-    let draggedTabId = null;
+    let isSignUpMode = false;
     let pieChartInstance = null;
-    let inactivityTimer = null;
-    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const categoryOptions = ["General", "Housing", "Utilities", "Food", "Transportation", "Income", "Subscriptions", "Unnecessary", "Debt"];
 
@@ -731,16 +746,70 @@
 
     db.enablePersistence({ synchronizeTabs: true }).catch(err => console.log("Persistence note:", err.code));
 
-    auth.signInAnonymously().catch(err => console.error("Auth error:", err));
-
+    // --- AUTHENTICATION LISTENERS ---
     auth.onAuthStateChanged(user => {
-        if (user) {
+        if (user && !user.isAnonymous) {
             currentUser = user;
             document.getElementById('statusDot').classList.add('online');
-            document.getElementById('statusText').textContent = "Private Cloud Synced";
+            document.getElementById('statusText').textContent = "Cloud Synced";
+            document.getElementById('userEmailDisplay').textContent = user.email;
+            document.getElementById('userEmailDisplay').style.display = 'inline-block';
+            document.getElementById('logoutBtn').style.display = 'inline-block';
+            document.getElementById('authModal').style.display = 'none';
             listenToCloudBudget();
+        } else {
+            currentUser = null;
+            document.getElementById('statusDot').classList.remove('online');
+            document.getElementById('statusText').textContent = "Disconnected";
+            document.getElementById('userEmailDisplay').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'none';
+            document.getElementById('authModal').style.display = 'flex';
         }
     });
+
+    function toggleAuthMode() {
+        isSignUpMode = !isSignUpMode;
+        const title = document.getElementById('authTitle');
+        const btn = document.getElementById('authSubmitBtn');
+        const toggleBtn = document.getElementById('authToggleBtn');
+        document.getElementById('authError').style.display = 'none';
+
+        if (isSignUpMode) {
+            title.textContent = "Create New Account";
+            btn.textContent = "Sign Up";
+            toggleBtn.textContent = "Already have an account? Sign In";
+        } else {
+            title.textContent = "Sign In to Your Budget";
+            btn.textContent = "Sign In";
+            toggleBtn.textContent = "Need an account? Sign Up";
+        }
+    }
+
+    function handleAuthSubmit(e) {
+        e.preventDefault();
+        const email = document.getElementById('authEmail').value.trim();
+        const password = document.getElementById('authPassword').value;
+        const errorDiv = document.getElementById('authError');
+        errorDiv.style.display = 'none';
+
+        if (isSignUpMode) {
+            auth.createUserWithEmailAndPassword(email, password)
+                .catch(err => {
+                    errorDiv.textContent = err.message;
+                    errorDiv.style.display = 'block';
+                });
+        } else {
+            auth.signInWithEmailAndPassword(email, password)
+                .catch(err => {
+                    errorDiv.textContent = err.message;
+                    errorDiv.style.display = 'block';
+                });
+        }
+    }
+
+    function signOutUser() {
+        auth.signOut();
+    }
 
     // --- HELPER DATE FORMATTER: MM/DD/YYYY ---
     function formatDateMMDDYYYY(dateStr) {
@@ -750,73 +819,6 @@
             return `${parts[1]}/${parts[2]}/${parts[0]}`;
         }
         return dateStr;
-    }
-
-    // --- INACTIVITY & PIN LOCK MANAGEMENT ---
-    function resetInactivityTimer() {
-        if (!isUnlocked) return;
-        clearTimeout(inactivityTimer);
-        inactivityTimer = setTimeout(() => {
-            lockApp();
-        }, INACTIVITY_TIMEOUT_MS);
-    }
-
-    ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach(evt => {
-        window.addEventListener(evt, resetInactivityTimer, true);
-    });
-
-    function showPinScreen() {
-        const pinModal = document.getElementById('pinModal');
-        const pinTitle = document.getElementById('pinTitle');
-        const pinSubtext = document.getElementById('pinSubtext');
-        const pinInput = document.getElementById('pinInput');
-        document.getElementById('pinError').style.display = 'none';
-        pinInput.value = '';
-
-        if (!appData.pin) {
-            pinTitle.textContent = "🆕 Create Security PIN";
-            pinSubtext.textContent = "Set a 4-digit PIN to secure your calendar.";
-            document.getElementById('pinSubmitBtn').textContent = "Set PIN & Unlock";
-        } else {
-            pinTitle.textContent = "🔒 Security PIN Lock";
-            pinSubtext.textContent = "Enter your 4-digit PIN to access your budget.";
-            document.getElementById('pinSubmitBtn').textContent = "Unlock Calendar";
-        }
-        pinModal.style.display = 'flex';
-        pinInput.focus();
-    }
-
-    function handlePinSubmit(e) {
-        e.preventDefault();
-        const inputVal = document.getElementById('pinInput').value;
-        if (inputVal.length !== 4) return;
-
-        if (!appData.pin) {
-            appData.pin = inputVal;
-            saveToCloud();
-            unlockApp();
-        } else {
-            if (inputVal === appData.pin) {
-                unlockApp();
-            } else {
-                document.getElementById('pinError').style.display = 'block';
-                document.getElementById('pinInput').value = '';
-            }
-        }
-    }
-
-    function unlockApp() {
-        isUnlocked = true;
-        document.getElementById('pinModal').style.display = 'none';
-        resetInactivityTimer();
-        renderTabs();
-        render();
-    }
-
-    function lockApp() {
-        isUnlocked = false;
-        clearTimeout(inactivityTimer);
-        showPinScreen();
     }
 
     function getActiveCalendar() {
@@ -848,7 +850,6 @@
                     appData.tabOrder = ["default"];
                     appData.currentYear = data.currentYear || today.getFullYear();
                     appData.currentMonth = data.currentMonth || today.getMonth();
-                    appData.pin = data.pin || null;
                 } else {
                     appData = data;
                 }
@@ -868,12 +869,8 @@
                 saveToCloud();
             }
 
-            if (!isUnlocked) {
-                showPinScreen();
-            } else {
-                renderTabs();
-                render();
-            }
+            renderTabs();
+            render();
         }, err => console.error("Firestore sync error:", err));
     }
 
@@ -1322,7 +1319,7 @@
     }
 
     function render() {
-        if (!isUnlocked) return;
+        if (!currentUser) return;
 
         const activeCal = getActiveCalendar();
         document.getElementById('initialBalanceInput').value = activeCal.initialBalance || 0;
