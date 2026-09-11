@@ -333,7 +333,7 @@
         </div>
         <div class="form-group">
             <label for="initialBalanceInput">Base Initial Balance ($):</label>
-            <input type="number" id="initialBalanceInput" step="0.01" value="903.50" style="width: 100px;">
+            <input type="number" id="initialBalanceInput" step="0.01" value="0.00" style="width: 100px;">
             <span style="font-size:0.75rem; color:#6b7280; margin-left: 5px;">(Jan 2024 Base)</span>
         </div>
     </div>
@@ -441,39 +441,42 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Default Fallback Template Data
+    const today = new Date();
     let appData = {
-        initialBalance: 903.50,
-        currentYear: 2026,
-        currentMonth: 9,
+        initialBalance: 0.00,
+        currentYear: today.getFullYear(),
+        currentMonth: today.getMonth(),
         transactions: []
     };
 
     let currentUser = null;
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-    // Cloud Authentication Listener
+    // Enable local persistence so offline access works seamless per browser
+    db.enablePersistence({ synchronizeTabs: true }).catch(err => console.log("Persistence note:", err.code));
+
+    // Sign in user anonymously (each browser gets its own unique persistent ID)
     auth.signInAnonymously().catch(err => console.error("Auth error:", err));
 
     auth.onAuthStateChanged(user => {
         if (user) {
             currentUser = user;
             document.getElementById('statusDot').classList.add('online');
-            document.getElementById('statusText').textContent = "Cloud Synced";
+            document.getElementById('statusText').textContent = "Private Cloud Synced";
             listenToCloudBudget();
         }
     });
 
-    // Real-Time Cloud Listener
+    // Listen to user's private document based on their Firebase User ID (UID)
     function listenToCloudBudget() {
         if (!currentUser) return;
 
-        db.collection("budgets").doc("shared_user_budget").onSnapshot(doc => {
+        db.collection("budgets").doc(currentUser.uid).onSnapshot(doc => {
             if (doc.exists) {
                 appData = doc.data();
-                document.getElementById('initialBalanceInput').value = appData.initialBalance;
+                document.getElementById('initialBalanceInput').value = appData.initialBalance || 0;
             } else {
-                saveToCloud(); // Save initial default state if empty
+                saveToCloud(); // Initialize default clean budget state for new visitor
             }
             render();
         }, err => console.error("Firestore sync error:", err));
@@ -481,8 +484,8 @@
 
     function saveToCloud() {
         if (!currentUser) return;
-        db.collection("budgets").doc("shared_user_budget").set(appData)
-            .catch(err => console.error("Error pushing data:", err));
+        db.collection("budgets").doc(currentUser.uid).set(appData)
+            .catch(err => console.error("Error saving data:", err));
     }
 
     function initSelects() {
@@ -542,7 +545,6 @@
         if (!appData.transactions) appData.transactions = [];
 
         if (editingId) {
-            // Update Existing Transaction
             const index = appData.transactions.findIndex(t => t.id === parseInt(editingId));
             if (index !== -1) {
                 appData.transactions[index] = {
@@ -555,7 +557,6 @@
                 };
             }
         } else {
-            // Add New Transaction
             appData.transactions.push({
                 id: Date.now(),
                 date,
